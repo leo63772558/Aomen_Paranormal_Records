@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://aibotfullgameaudit20261119"]
+
+[ext_resource type="Script" path="res://tests/aibot_full_game_playtest.gd" id="1_playtest"]
+
+[node name="AIBotFullGamePlaytest" type="Node"]
+script = ExtResource("1_playtest")

@@ -1,0 +1,55 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://entities/player/player_controller.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/lighting/flashlight_cone.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/lighting/soft_light.png" id="3"]
+
+[sub_resource type="CircleShape2D" id="Body"]
+radius = 7.0
+
+[sub_resource type="CircleShape2D" id="Interaction"]
+radius = 48.0
+
+[node name="Player" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 5
+script = ExtResource("1")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+position = Vector2(0, -18)
+light_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Body")
+
+[node name="FlashlightPivot" type="Node2D" parent="."]
+position = Vector2(3, -31)
+
+[node name="PointLight2D" type="PointLight2D" parent="FlashlightPivot"]
+position = Vector2(0, 0)
+range_item_cull_mask = 1
+texture = ExtResource("2")
+color = Color(1, 0.94, 0.75, 1)
+energy = 0.85
+shadow_enabled = false
+shadow_filter = 1
+
+[node name="NearLight" type="PointLight2D" parent="."]
+position = Vector2(0, -25)
+range_item_cull_mask = 3
+texture = ExtResource("3")
+texture_scale = 0.3
+color = Color(0.65, 0.8, 0.76, 1)
+energy = 0.65
+shadow_enabled = true
+
+[node name="InteractionArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 8
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractionArea"]
+shape = SubResource("Interaction")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+enabled = false
+process_callback = 0

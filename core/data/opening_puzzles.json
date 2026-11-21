@@ -1,0 +1,8 @@
+{
+  "p_ch0_floor_power": {
+    "target_floor":"3F",
+    "branches":[{"id":"A","floor":"2F"},{"id":"B","floor":"3F"},{"id":"C","floor":"1F"}],
+    "success_branch":"B",
+    "wrong_feedback":"这条线路通往%s，三楼支路仍未恢复。再对照线路图。"
+  }
+}

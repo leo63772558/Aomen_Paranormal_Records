@@ -1,0 +1,215 @@
+{
+  "ch0_ah_kin": {
+    "scene": "res://levels/ch0_tanglau/ahhao_sequence_v5.tscn",
+    "entries": [
+      "arrival",
+      "from_foyer"
+    ]
+  },
+  "ch0_hk_work": {
+    "scene": "res://levels/ch0_tanglau/hk_work_026.tscn",
+    "entries": [
+      "arrival"
+    ]
+  },
+  "ch0_hk_home": {
+    "scene": "res://levels/ch0_tanglau/hk_home_026.tscn",
+    "entries": [
+      "from_work"
+    ]
+  },
+  "ch0_bridge_bus": {
+    "scene": "res://levels/ch0_tanglau/bridge_bus_026.tscn",
+    "entries": [
+      "from_home"
+    ]
+  },
+  "ch0_street": {
+    "scene": "res://levels/ch0_tanglau/opening_street.tscn",
+    "entries": [
+      "arrival",
+      "from_foyer"
+    ]
+  },
+  "ch0_foyer": {
+    "scene": "res://levels/ch0_tanglau/entrance_hall.tscn",
+    "entries": [
+      "from_street",
+      "from_corridor"
+    ]
+  },
+  "ch0_corridor": {
+    "scene": "res://levels/ch0_tanglau/corridor_3f.tscn",
+    "entries": [
+      "from_foyer",
+      "from_room304"
+    ]
+  },
+  "ch0_room304": {
+    "scene": "res://levels/ch0_tanglau/room304.tscn",
+    "entries": [
+      "from_corridor",
+      "from_maintenance",
+      "from_ah_escape"
+    ]
+  },
+  "ch0_maintenance": {
+    "scene": "res://levels/ch0_tanglau/maintenance_012.tscn",
+    "entries": [
+      "from_room304",
+      "from_yard"
+    ]
+  },
+  "ch0_yard": {
+    "scene": "res://levels/ch0_tanglau/service_yard_012.tscn",
+    "entries": [
+      "from_maintenance"
+    ]
+  },
+  "ch0_exit_lane": {
+    "scene": "res://levels/ch0_tanglau/exit_laneway_012.tscn",
+    "entries": [
+      "from_yard",
+      "from_crypt"
+    ]
+  },
+  "ch1_crypt_entry": {
+    "scene": "res://levels/ch1_stpaul/crypt_entry_013.tscn",
+    "entries": [
+      "from_lane",
+      "from_hall"
+    ]
+  },
+  "ch1_crypt_hall": {
+    "scene": "res://levels/ch1_stpaul/crypt_hall_013.tscn",
+    "entries": [
+      "from_entry",
+      "from_archive"
+    ]
+  },
+  "ch1_archive": {
+    "scene": "res://levels/ch1_stpaul/crypt_archive_013.tscn",
+    "entries": [
+      "from_hall",
+      "from_hill"
+    ]
+  },
+  "ch2_hill_base": {
+    "scene": "res://levels/ch2_guia/hill_base_014.tscn",
+    "entries": [
+      "from_archive"
+    ]
+  },
+  "ch2_hill_steps": {
+    "scene": "res://levels/ch2_guia/hill_steps_014.tscn",
+    "entries": [
+      "from_hall"
+    ]
+  },
+  "ch2_shelter": {
+    "scene": "res://levels/ch2_guia/hill_shelter_014.tscn",
+    "entries": [
+      "from_base",
+      "from_descent"
+    ]
+  },
+  "ch2_bunker_hall": {
+    "scene": "res://levels/ch2_guia/bunker_hall_015.tscn",
+    "entries": [
+      "from_steps",
+      "from_descent",
+      "from_ammo",
+      "from_shaft"
+    ]
+  },
+  "ch0_sample": {
+    "scene": "res://levels/ch0_tanglau/sample_room.tscn",
+    "entries": [
+      "sample"
+    ]
+  },
+  "ch2_bunker_descent": {
+    "scene": "res://levels/ch2_guia/bunker_descent_020.tscn",
+    "entries": [
+      "from_gate",
+      "from_hall"
+    ]
+  },
+  "ch2_bunker_ammo": {
+    "scene": "res://levels/ch2_guia/bunker_ammo_022.tscn",
+    "entries": [
+      "from_hall"
+    ]
+  },
+  "ch2_bunker_shaft": {
+    "scene": "res://levels/ch2_guia/bunker_shaft_084.tscn",
+    "entries": ["from_hall"]
+  },
+  "ch4_bus_loop": {
+    "scene": "res://levels/ch4_bus/bus_loop.tscn",
+    "entries": [
+      "arrival",
+      "loop_start",
+      "from_w17_ticket"
+    ]
+  },
+  "ch3_amparo_archive": {
+    "scene": "res://levels/ch3_amparo_alley/archive_room.tscn",
+    "entries": [
+      "from_bunker",
+      "from_passage"
+    ]
+  },
+  "ch3_quiet_passage": {
+    "scene": "res://levels/ch3_amparo_alley/quiet_passage.tscn",
+    "entries": ["from_archive"]
+  },
+  "ch5_hacsa_beach": {
+    "scene": "res://levels/ch5_hacsa_beach/beach_scene.tscn",
+    "entries": [
+      "from_bus_crash"
+    ]
+  },
+  "ch5_coastal_works": {
+    "scene": "res://levels/ch5_hacsa_beach/coastal_works.tscn",
+    "entries": [
+      "from_beach",
+      "from_landing"
+    ]
+  },
+  "ch5_coastal_landing": {
+    "scene": "res://levels/ch5_hacsa_beach/coastal_landing.tscn",
+    "entries": [
+      "from_shaft",
+      "from_crawlway"
+    ]
+  },
+  "ch5_coastal_chamber": {
+    "scene": "res://levels/ch5_hacsa_beach/coastal_chamber.tscn",
+    "entries": [
+      "from_landing",
+      "from_silt_tunnel"
+    ]
+  },
+  "ch5_coastal_silt_tunnel": {
+    "scene": "res://levels/ch5_hacsa_beach/coastal_silt_tunnel.tscn",
+    "entries": [
+      "from_chamber",
+      "from_pressure_gallery"
+    ]
+  },
+  "ch5_coastal_pressure_gallery": {
+    "scene": "res://levels/ch5_hacsa_beach/coastal_pressure_gallery_060.tscn",
+    "entries": [
+      "from_silt_tunnel",
+      "from_ch6"
+    ]
+  },
+  "ch6_abandoned_vip": {
+    "scene": "res://levels/ch6_abandoned_vip/abandoned_vip_rescue_061.tscn",
+    "entries": [
+      "from_pressure_gallery",
+      "from_pre_ending"
+    ]
+  }
+}

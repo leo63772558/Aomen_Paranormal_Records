@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/ch3_archive_room_regression.gd" id="1"]
+
+[node name="Ch3ArchiveRoomRegression" type="Node"]
+script = ExtResource("1")

@@ -1,0 +1,56 @@
+{
+  "photo_invite": {
+    "speaker": "黄嘉敏",
+    "cantonese": "往后退两步嘛，把后面的大三巴牌坊也拍进去！",
+    "subtitle": "往后退两步嘛，把后面的大三巴牌坊也拍进去！",
+    "audio": null
+  },
+  "photo_done": {
+    "speaker": "黄嘉敏",
+    "cantonese": "这张构图不错！陈大师傅今天总算没手抖。",
+    "subtitle": "这张构图不错！陈大师傅今天总算没手抖。",
+    "audio": null
+  },
+  "pastry_offer": {
+    "speaker": "黄嘉敏",
+    "cantonese": "奖励你的。刚出炉的安德鲁葡挞，还烫手呢，趁热吃。",
+    "subtitle": "奖励你的。刚出炉的安德鲁葡挞，还烫手呢，趁热吃。",
+    "audio": null
+  },
+  "pastry_reply": {
+    "speaker": "陈大文",
+    "cantonese": "说好来澳门吃葡挞和猪扒包，怎么又变成钻荒废旧酒店了？",
+    "subtitle": "大文：说好来吃葡挞，怎么又变成钻荒废旧楼了？\n嘉敏：就看半小时！听说 304 床后那条暗道直通大三巴地底墓室，拍完立刻去吃水蟹粥。",
+    "audio": null
+  },
+  "knock": {
+    "speaker": "黄嘉敏",
+    "cantonese": "旧楼里没信号。万一走散了，就敲两下、停一停、再敲一下。",
+    "subtitle": "嘉敏：旧楼没信号。万一走散了，就按老规矩敲两下、停一停、再敲一下。\n大文：两短一长。记住了，紧跟在我后面，不准乱跑。",
+    "audio": null
+  },
+  "enter": {
+    "speaker": "黄嘉敏",
+    "cantonese": "我先上 304！大文你修一楼电表，阿豪去二楼半合备用闸。",
+    "subtitle": "嘉敏：我先拿手电上 304！大文你看看一楼电表。\n阿豪：姐夫，我去二楼半后廊合备用闸刀，弄完马上回楼梯口找你！",
+    "audio": null
+  },
+  "foyer": {
+    "speaker": "陈大文",
+    "cantonese": "楼梯全黑了……先用工具钳拆开墙边的电表箱看看。",
+    "subtitle": "楼梯全黑了……先用工具钳拆开墙边的电表箱看看。",
+    "audio": null
+  },
+  "meter": {
+    "speaker": "陈大文",
+    "cantonese": "三楼支路断了。先拆盖检查测试表和值班台备件。",
+    "subtitle": "三楼支路断了。先拆盖检查测试表和值班台备件。",
+    "audio": null
+  },
+  "stairs": {
+    "speaker": "陈大文",
+    "cantonese": "嘉敏还在三楼等我，先把楼梯灯修亮再上去。",
+    "subtitle": "嘉敏还在三楼等我，先把楼梯灯修亮再上去。",
+    "audio": null
+  }
+}

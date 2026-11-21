@@ -1,0 +1,21 @@
+# ── Godot 编辑器缓存 ──
+.godot/
+
+# ── 构建引擎 / 恢复备份（体积过大，仅本地）──
+tools/engine/
+tools/recovery/
+export_templates/
+
+# ── 本地试玩包（200MB+，走 GitHub Release 分发，不入库）──
+/*.zip
+/澳诡实录_*/
+
+# ── 构建报告日志与截图 ──
+docs/build_reports/
+
+# ── Python 缓存 ──
+__pycache__/
+*.pyc
+
+# ── 临时文件 ──
+*.tmp
