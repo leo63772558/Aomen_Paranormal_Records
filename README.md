@@ -2,7 +2,7 @@
 
 本轮按实玩反馈整理主菜单、背包、福荣里合照和阿豪头像，并调整松山开锁、录音复听、防空洞楼梯、肉铺秤具与后巷、巴士和黑沙调查的操作。脚本从香港走到黑沙通过 321 项断言，独立进程接续到真结局通过 150 项。杆秤最后一次视觉微调后另外重跑了肉铺专项，85 项通过。
 
-当前 Windows x64 试玩包为 [**澳诡实录_V5_Windows试玩_20261120_024613.zip**](./澳诡实录_V5_Windows试玩_20261120_024613.zip)。解压后运行 `AomenParanormalRecords.exe`。构建已通过 ZIP 完整性、独立解压及后台启动检查。
+当前 Windows x64 试玩包为 **澳诡实录_V5_Windows试玩_20261120_024613.zip**（约 210 MB，因超出仓库体积预算未纳入版本控制，本地保留于工程根目录）。解压后运行 `AomenParanormalRecords.exe`。构建已通过 ZIP 完整性、独立解压及后台启动检查。
 
 本次各专项覆盖全部背包道具的图像资源、合照显示尺寸、锈锁点击操作、冷库门顶碰撞、巴士通道与铃绳读档，以及从黑沙起点走到救援车。自动测试使用隔离档和 Dummy 音频，界面通过隐藏窗口查看，真人盲玩和音效听感仍待验收。
 
@@ -44,4 +44,17 @@ F 开关手电，Shift 冲刺，Ctrl 切换蹲行，Q/J 查看“线索记录”
 - 当前背景、家具、人物、信箱、头像采用内置 imagegen 生成并保存的 PNG，见 [003](docs/美术生成_003.md)、[004](docs/美术生成_004.md)、[005 持手电人物](docs/美术生成_005.md)素材记录及完整提示词。标题、窗口皮肤和四种石砖脚步源为 `tools/build_refinement_003.py`。当前人物图格、脚底和镜片位置可用 `python tools/index_flashlight_sheet.py` 重新索引；它只读图像，不改像素。旧版美术脚本保留作制作来源，不是当前完整素材的重建入口。
 - 衣柜声音为 qubodup / Iwan Gabovitch 的 [CC0 实录门声](https://opengameart.org/content/door-open-door-close-set)，原文件与接入路径见 `assets/audio/qubodup/SOURCE_LICENSE.md`。后台检查静音，听感仍需用户实际体验。
 - 文档：以 [总策划](master_gdd.md) 与 [开发规范](ai_agent_godot4_system_prompt.md) 为设计依据；其原始“尚未建工程”说明属于策划修订当时的交付边界，当前实现状态以本说明和构建记录为准。
+
+## 仓库说明
+
+本仓库收录 V5 开发工程的可版本化部分：`core/`、`levels/`、`ui/`、`entities/`、`tests/`、`assets/` 与策划文档。以下内容因体积或本地环境相关而未纳入：
+
+| 未纳入项 | 原因 |
+| --- | --- |
+| `tools/engine/` | 随项目分发的 Godot 4.7.2 引擎二进制（约 255 MB），可由官方安装包替代 |
+| `tools/recovery/` | QA 过程备份与历史试玩包快照（约 32 GB） |
+| 根目录 `*.zip` | Windows 试玩包，单个约 200 MB |
+| `docs/build_reports/` | 构建日志与截图，约 200 MB、2900 余个文件 |
+
+克隆后打开工程：安装 **Godot 4.7.2**（Compatibility 渲染后端），用编辑器导入 `project.godot`；或自行把引擎放入 `tools/engine/` 后沿用根目录的 `打开Godot工程.cmd`。
 
