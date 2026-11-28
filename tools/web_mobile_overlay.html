@@ -1,0 +1,930 @@
+<!-- Aomen Paranormal Records: Responsive Dual-Mode Mobile Touch Overlay -->
+<style id="aomen-mobile-style">
+:root {
+  --ts: 1;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --ao-bg: rgba(9, 22, 17, 0.78);
+  --ao-bg-strong: rgba(11, 28, 21, 0.92);
+  --ao-border: rgba(196, 169, 108, 0.56);
+  --ao-border-hot: rgba(244, 218, 140, 0.95);
+  --ao-text: #ebe3c8;
+  --ao-gold: #f4dc95;
+  --ao-emerald: #6dc891;
+}
+
+html, body {
+  width: 100%;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #070e0a;
+  touch-action: none;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#canvas-wrap {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: 1;
+}
+
+body.aomen-portrait #canvas-wrap {
+  bottom: auto;
+  border-bottom: 1px solid rgba(196, 169, 108, 0.35);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.65);
+}
+
+#portrait-deck {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(28, 54, 42, 0.38) 0%, rgba(7, 14, 10, 0.96) 72%),
+    linear-gradient(180deg, #0b1712 0%, #060c09 100%);
+  pointer-events: none;
+}
+
+body.aomen-portrait #portrait-deck {
+  display: block;
+}
+
+#portrait-hint {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(6px + var(--safe-bottom));
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: rgba(208, 200, 174, 0.68);
+  pointer-events: none;
+}
+
+#aomen-mobile-ui {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
+}
+
+body.aomen-touch-on #aomen-mobile-ui {
+  display: block;
+}
+
+#ao-top-bar {
+  position: absolute;
+  top: calc(8px + var(--safe-top));
+  left: calc(10px + var(--safe-left));
+  right: calc(10px + var(--safe-right));
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+
+body.aomen-portrait #ao-top-bar {
+  top: calc(var(--deck-top, 260px) + 8px);
+}
+
+.ao-top-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.ao-top-group.right {
+  justify-content: flex-end;
+}
+
+.ao-pill {
+  pointer-events: auto;
+  touch-action: none;
+  min-width: calc(44px * var(--ts));
+  height: calc(31px * var(--ts));
+  padding: 0 calc(10px * var(--ts));
+  border-radius: 6px;
+  border: 1px solid var(--ao-border);
+  background: var(--ao-bg);
+  color: var(--ao-text);
+  font-family: inherit;
+  font-size: calc(12px * var(--ts));
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  transition: transform 0.08s ease, border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.ao-pill:active,
+.ao-pill.is-down {
+  transform: scale(0.94);
+  background: rgba(34, 68, 52, 0.94);
+  border-color: var(--ao-border-hot);
+  color: var(--ao-gold);
+}
+
+.ao-pill.pulse-gold {
+  border-color: var(--ao-border-hot);
+  color: var(--ao-gold);
+  box-shadow: 0 0 12px rgba(244, 220, 149, 0.35);
+}
+
+.ao-pill.is-hidden {
+  display: none !important;
+}
+
+#ao-play-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+body.aomen-portrait #ao-play-layer {
+  top: var(--deck-top, 260px);
+}
+
+#ao-joy-zone {
+  position: absolute;
+  left: var(--safe-left);
+  bottom: var(--safe-bottom);
+  width: 44%;
+  height: 62%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+body.aomen-portrait #ao-joy-zone {
+  width: 48%;
+  height: calc(100% - 44px - var(--safe-bottom));
+}
+
+#ao-joy-base {
+  position: absolute;
+  width: calc(clamp(96px, 22vmin, 134px) * var(--ts));
+  height: calc(clamp(96px, 22vmin, 134px) * var(--ts));
+  margin-left: calc(clamp(96px, 22vmin, 134px) * var(--ts) * -0.5);
+  margin-top: calc(clamp(96px, 22vmin, 134px) * var(--ts) * -0.5);
+  border-radius: 50%;
+  border: 1.5px solid rgba(196, 169, 108, 0.34);
+  background: radial-gradient(circle, rgba(16, 36, 28, 0.24) 0%, rgba(8, 19, 15, 0.56) 72%, rgba(212, 182, 108, 0.14) 100%);
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.45);
+  opacity: 0.62;
+  transition: opacity 0.14s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  pointer-events: none;
+}
+
+#ao-joy-base.is-active {
+  opacity: 0.96;
+  border-color: rgba(214, 188, 122, 0.72);
+}
+
+#ao-joy-base.is-sprint {
+  border-color: var(--ao-border-hot);
+  box-shadow: inset 0 0 16px rgba(244, 220, 149, 0.28), 0 0 14px rgba(244, 220, 149, 0.28);
+}
+
+#ao-joy-sprint-tag {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--ao-gold);
+  opacity: 0;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #000;
+  transition: opacity 0.1s ease;
+}
+
+#ao-joy-base.is-sprint #ao-joy-sprint-tag {
+  opacity: 1;
+}
+
+#ao-joy-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 42%;
+  height: 42%;
+  margin-left: -21%;
+  margin-top: -21%;
+  border-radius: 50%;
+  border: 1.5px solid rgba(235, 222, 180, 0.78);
+  background: radial-gradient(circle at 35% 30%, rgba(62, 106, 84, 0.92), rgba(14, 30, 23, 0.96));
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
+}
+
+#ao-aim-zone {
+  position: absolute;
+  right: var(--safe-right);
+  bottom: var(--safe-bottom);
+  width: 52%;
+  height: 70%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+body.aomen-portrait #ao-aim-zone {
+  width: 52%;
+  height: calc(100% - 44px - var(--safe-bottom));
+}
+
+#ao-aim-reticle {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  margin-left: -28px;
+  margin-top: -28px;
+  border-radius: 50%;
+  border: 1px dashed rgba(244, 220, 149, 0.65);
+  background: rgba(11, 24, 18, 0.22);
+  display: none;
+  pointer-events: none;
+}
+
+#ao-aim-needle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 2px;
+  margin-top: -1px;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, rgba(244, 220, 149, 0.35), rgba(244, 220, 149, 0.98));
+  border-radius: 2px;
+}
+
+#ao-action-arc {
+  position: absolute;
+  right: calc(16px + var(--safe-right));
+  bottom: calc(16px + var(--safe-bottom));
+  width: calc(clamp(164px, 34vmin, 224px) * var(--ts));
+  height: calc(clamp(156px, 32vmin, 212px) * var(--ts));
+  pointer-events: none;
+  z-index: 45;
+}
+
+body.aomen-portrait #ao-action-arc {
+  bottom: calc(56px + var(--safe-bottom));
+}
+
+.ao-btn {
+  position: absolute;
+  pointer-events: auto;
+  touch-action: none;
+  border-radius: 50%;
+  border: 1.5px solid var(--ao-border);
+  background: var(--ao-bg);
+  color: var(--ao-text);
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.15;
+  padding: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: transform 0.08s ease, border-color 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.ao-btn:active,
+.ao-btn.is-down {
+  transform: scale(0.92);
+  background: rgba(36, 74, 56, 0.94);
+  border-color: var(--ao-border-hot);
+  color: var(--ao-gold);
+}
+
+.ao-btn.is-on {
+  border-color: rgba(126, 226, 162, 0.92);
+  background: rgba(20, 56, 40, 0.9);
+  color: #dff5df;
+}
+
+.ao-btn.is-hidden {
+  display: none !important;
+}
+
+#ao-btn-primary {
+  right: 0;
+  bottom: 0;
+  width: calc(clamp(64px, 15.5vmin, 84px) * var(--ts));
+  height: calc(clamp(64px, 15.5vmin, 84px) * var(--ts));
+  font-size: calc(clamp(13px, 2.8vmin, 15px) * var(--ts));
+  background: radial-gradient(circle at 35% 30%, rgba(28, 60, 46, 0.88), rgba(10, 24, 18, 0.92));
+}
+
+#ao-btn-primary.has-target {
+  border-color: var(--ao-border-hot);
+  color: var(--ao-gold);
+  box-shadow: 0 0 18px rgba(244, 220, 149, 0.42), 0 4px 14px rgba(0, 0, 0, 0.55);
+}
+
+.ao-sub {
+  width: calc(clamp(44px, 10.5vmin, 56px) * var(--ts));
+  height: calc(clamp(44px, 10.5vmin, 56px) * var(--ts));
+  font-size: calc(clamp(11px, 2.3vmin, 13px) * var(--ts));
+}
+
+#ao-btn-flashlight {
+  right: calc(84px * var(--ts));
+  bottom: calc(6px * var(--ts));
+}
+
+#ao-btn-crouch {
+  right: calc(66px * var(--ts));
+  bottom: calc(68px * var(--ts));
+}
+
+#ao-btn-flash {
+  right: calc(4px * var(--ts));
+  bottom: calc(92px * var(--ts));
+}
+
+#ao-btn-sprint {
+  right: calc(122px * var(--ts));
+  bottom: calc(56px * var(--ts));
+  width: calc(clamp(40px, 9.5vmin, 50px) * var(--ts));
+  height: calc(clamp(40px, 9.5vmin, 50px) * var(--ts));
+  font-size: calc(11px * var(--ts));
+  opacity: 0.86;
+}
+
+#ao-btn-exit-hide {
+  right: calc(88px * var(--ts));
+  bottom: calc(12px * var(--ts));
+}
+
+.ao-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #233d2f;
+  border: 1px solid var(--ao-border-hot);
+  color: var(--ao-gold);
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+}
+
+#ao-modal-back {
+  position: absolute;
+  top: calc(8px + var(--safe-top));
+  right: calc(10px + var(--safe-right));
+  z-index: 50;
+}
+
+body.aomen-portrait #ao-modal-back {
+  top: calc(var(--deck-top, 260px) + 10px);
+}
+</style>
+
+<div id="portrait-deck" aria-hidden="true">
+  <div id="portrait-hint">竖屏掌机模式 · 横置手机可切换全屏视野 · 右半区划动调手电</div>
+</div>
+
+<div id="aomen-mobile-ui" aria-hidden="true">
+  <div id="ao-top-bar">
+    <div class="ao-top-group left" id="ao-top-left">
+      <button type="button" class="ao-pill" data-act="phone" id="ao-pill-phone">手机</button>
+      <button type="button" class="ao-pill" data-act="inventory" id="ao-pill-bag">背包</button>
+      <button type="button" class="ao-pill" data-act="map" id="ao-pill-map">地图</button>
+      <button type="button" class="ao-pill" data-act="journal" id="ao-pill-journal">笔记</button>
+      <button type="button" class="ao-pill" data-act="camera_mode" id="ao-pill-camera">取景</button>
+      <button type="button" class="ao-pill" data-act="investigation_hint" id="ao-pill-hint">提示</button>
+    </div>
+    <div class="ao-top-group right">
+      <button type="button" class="ao-pill" id="ao-pill-fullscreen">全屏</button>
+      <button type="button" class="ao-pill" data-act="pause" id="ao-pill-pause">暂停</button>
+    </div>
+  </div>
+
+  <button type="button" class="ao-pill is-hidden" id="ao-modal-back">返回</button>
+
+  <div id="ao-play-layer">
+    <div id="ao-joy-zone">
+      <div id="ao-joy-base">
+        <div id="ao-joy-sprint-tag">冲刺</div>
+        <div id="ao-joy-knob"></div>
+      </div>
+    </div>
+
+    <div id="ao-aim-zone">
+      <div id="ao-aim-reticle"><div id="ao-aim-needle"></div></div>
+    </div>
+
+    <div id="ao-action-arc">
+      <button type="button" class="ao-btn" id="ao-btn-primary">交互</button>
+      <button type="button" class="ao-btn ao-sub" id="ao-btn-flashlight">手电</button>
+      <button type="button" class="ao-btn ao-sub" id="ao-btn-crouch">蹲行</button>
+      <button type="button" class="ao-btn ao-sub" id="ao-btn-flash">强闪<span class="ao-badge" id="ao-flash-badge">2</span></button>
+      <button type="button" class="ao-btn ao-sub" id="ao-btn-sprint">冲刺</button>
+      <button type="button" class="ao-btn ao-sub is-hidden" id="ao-btn-exit-hide">出来</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  if (window.__AOMEN_BRIDGE__) return;
+
+  var canvas = document.getElementById('canvas');
+  var wrap = document.createElement('div');
+  wrap.id = 'canvas-wrap';
+  if (canvas && canvas.parentNode) {
+    canvas.parentNode.insertBefore(wrap, canvas);
+    wrap.appendChild(canvas);
+  }
+
+  var params = new URLSearchParams(window.location.search);
+  var urlTouch = params.get('touch');
+  var hardwareTouch = (navigator.maxTouchPoints > 0) || ('ontouchstart' in window) || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  var audioUnlocked = false;
+
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    try {
+      var list = [];
+      if (window.SDL2 && window.SDL2.audioContext) list.push(window.SDL2.audioContext);
+      if (window.GodotAudio && window.GodotAudio.ctx) list.push(window.GodotAudio.ctx);
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] && typeof list[i].resume === 'function' && list[i].state === 'suspended') {
+          list[i].resume().catch(function () {});
+        }
+      }
+    } catch (_e) {}
+  }
+
+  function haptic(ms) {
+    try {
+      if (navigator.vibrate) navigator.vibrate(ms || 10);
+    } catch (_e) {}
+  }
+
+  var state = {
+    mode: 'menu',
+    prompt: '',
+    hasTarget: false,
+    crouching: false,
+    flashlightOn: true,
+    allowFlashlight: false,
+    hasPhone: false,
+    flashCharges: 0,
+    flashCooldown: 0,
+    canCombineBag: false,
+    bagCount: 0,
+    canMap: false,
+    canCamera: false,
+    canHint: false,
+    dialogueChoices: 0,
+    prefMode: 'auto',
+    prefAutoSprint: true,
+    prefScale: 1.0
+  };
+
+  var inputState = {
+    mx: 0,
+    my: 0,
+    sp: false,
+    ax: 0,
+    ay: 0,
+    aa: false,
+    ev: []
+  };
+
+  var manualSprint = false;
+  var joySprint = false;
+  var heldActions = {};
+
+  function pushAction(action, pressed) {
+    inputState.ev.push({ a: action, p: !!pressed });
+  }
+
+  function pulseAction(action) {
+    pushAction(action, true);
+    setTimeout(function () { pushAction(action, false); }, 55);
+  }
+
+  function setHeldAction(action, down) {
+    if (!!heldActions[action] === !!down) return;
+    heldActions[action] = !!down;
+    pushAction(action, !!down);
+  }
+
+  function releaseAllHeld() {
+    for (var act in heldActions) {
+      if (heldActions[act]) {
+        heldActions[act] = false;
+        pushAction(act, false);
+      }
+    }
+    manualSprint = false;
+    joySprint = false;
+    inputState.mx = 0;
+    inputState.my = 0;
+    inputState.sp = false;
+    inputState.aa = false;
+  }
+
+  function isTouchActive() {
+    if (urlTouch === '1') return true;
+    if (urlTouch === '0') return false;
+    if (state.prefMode === 'on') return true;
+    if (state.prefMode === 'off') return false;
+    return hardwareTouch;
+  }
+
+  function updateLayout() {
+    var active = isTouchActive();
+    document.body.classList.toggle('aomen-touch-on', active);
+    document.documentElement.style.setProperty('--ts', String(state.prefScale || 1.0));
+
+    var w = window.innerWidth || 640;
+    var h = window.innerHeight || 360;
+    var portrait = active && (h > w * 1.12);
+    document.body.classList.toggle('aomen-portrait', portrait);
+
+    if (canvas && wrap) {
+      if (portrait) {
+        var safeTop = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-top')) || 0;
+        var scale = Math.min(w / 640, h / 360);
+        var gameH = 360 * scale;
+        var canvasGameTop = (h - gameH) * 0.5;
+        var targetTop = safeTop + 6;
+        var shiftY = Math.round(targetTop - canvasGameTop);
+        var wrapH = Math.round(targetTop + gameH + 2);
+        wrap.style.height = wrapH + 'px';
+        canvas.style.transform = 'translateY(' + shiftY + 'px)';
+        document.documentElement.style.setProperty('--deck-top', wrapH + 'px');
+      } else {
+        wrap.style.height = '';
+        canvas.style.transform = '';
+      }
+    }
+
+    resetJoyVisual();
+  }
+
+  // Elements
+  var topBar = document.getElementById('ao-top-bar');
+  var playLayer = document.getElementById('ao-play-layer');
+  var joyZone = document.getElementById('ao-joy-zone');
+  var joyBase = document.getElementById('ao-joy-base');
+  var joyKnob = document.getElementById('ao-joy-knob');
+  var aimZone = document.getElementById('ao-aim-zone');
+  var aimReticle = document.getElementById('ao-aim-reticle');
+  var aimNeedle = document.getElementById('ao-aim-needle');
+  var actionArc = document.getElementById('ao-action-arc');
+
+  var btnPrimary = document.getElementById('ao-btn-primary');
+  var btnFlashlight = document.getElementById('ao-btn-flashlight');
+  var btnCrouch = document.getElementById('ao-btn-crouch');
+  var btnFlash = document.getElementById('ao-btn-flash');
+  var flashBadge = document.getElementById('ao-flash-badge');
+  var btnSprint = document.getElementById('ao-btn-sprint');
+  var btnExitHide = document.getElementById('ao-btn-exit-hide');
+  var btnModalBack = document.getElementById('ao-modal-back');
+
+  var pillPhone = document.getElementById('ao-pill-phone');
+  var pillBag = document.getElementById('ao-pill-bag');
+  var pillMap = document.getElementById('ao-pill-map');
+  var pillJournal = document.getElementById('ao-pill-journal');
+  var pillCamera = document.getElementById('ao-pill-camera');
+  var pillHint = document.getElementById('ao-pill-hint');
+  var pillFs = document.getElementById('ao-pill-fullscreen');
+  var pillPause = document.getElementById('ao-pill-pause');
+
+  function formatPromptLabel(raw) {
+    if (!raw) return '交互';
+    var cleaned = raw.replace(/^\[.*?\]\s*/, '').trim();
+    if (!cleaned) return '交互';
+    if (cleaned.length <= 5) return cleaned;
+    if (cleaned.indexOf('进') >= 0 || cleaned.indexOf('躲') >= 0) return '躲藏';
+    if (cleaned.indexOf('门') >= 0 || cleaned.indexOf('离开') >= 0) return '开门';
+    if (cleaned.indexOf('接电') >= 0) return '接电';
+    if (cleaned.indexOf('交谈') >= 0 || cleaned.indexOf('对话') >= 0) return '对话';
+    return cleaned.slice(0, 4);
+  }
+
+  function syncUiFromState() {
+    updateLayout();
+    var mode = state.mode || 'menu';
+    var inExplore = (mode === 'explore');
+    var inHidden = (mode === 'hidden');
+    var inCamera = (mode === 'camera');
+    var inModal = (mode === 'modal' || mode === 'dialogue');
+    var showPlay = inExplore || inHidden || inCamera;
+
+    topBar.style.display = inExplore ? 'flex' : 'none';
+    playLayer.style.display = showPlay ? 'block' : 'none';
+    joyZone.style.display = inExplore ? 'block' : 'none';
+    aimZone.style.display = inExplore ? 'block' : 'none';
+    actionArc.style.display = showPlay ? 'block' : 'none';
+
+    btnModalBack.classList.toggle('is-hidden', !(inModal || inCamera || mode === 'pipe_knock'));
+    btnModalBack.textContent = inCamera ? '放下' : '返回';
+    btnModalBack.dataset.backAction = inCamera ? 'camera_mode' : 'pause';
+
+    if (inExplore) {
+      btnPrimary.textContent = state.hasTarget ? formatPromptLabel(state.prompt) : '交互';
+      btnPrimary.classList.toggle('has-target', !!state.hasTarget);
+      btnPrimary.dataset.holdAction = '';
+      btnPrimary.dataset.tapAction = 'interact';
+    } else if (inHidden) {
+      btnPrimary.textContent = '按住\n屏息';
+      btnPrimary.classList.add('has-target');
+      btnPrimary.dataset.holdAction = 'hold_breath';
+      btnPrimary.dataset.tapAction = '';
+    } else if (inCamera) {
+      btnPrimary.textContent = '拍照';
+      btnPrimary.classList.add('has-target');
+      btnPrimary.dataset.holdAction = '';
+      btnPrimary.dataset.tapAction = 'photo_capture';
+    }
+
+    btnFlashlight.classList.toggle('is-hidden', !inExplore || !state.allowFlashlight);
+    btnFlashlight.classList.toggle('is-on', !!state.flashlightOn);
+    btnCrouch.classList.toggle('is-hidden', !inExplore);
+    btnCrouch.classList.toggle('is-on', !!state.crouching);
+    btnFlash.classList.toggle('is-hidden', !inExplore || !state.hasPhone);
+    flashBadge.textContent = state.flashCooldown > 0 ? (Math.ceil(state.flashCooldown) + 's') : String(state.flashCharges || 0);
+    btnSprint.classList.toggle('is-hidden', !inExplore);
+    btnExitHide.classList.toggle('is-hidden', !inHidden);
+
+    pillPhone.classList.toggle('is-hidden', !state.hasPhone);
+    pillBag.classList.toggle('pulse-gold', !!state.canCombineBag);
+    pillBag.textContent = state.canCombineBag ? '背包✦' : (state.bagCount > 0 ? ('背包(' + state.bagCount + ')') : '背包');
+    pillMap.classList.toggle('is-hidden', !state.canMap);
+    pillCamera.classList.toggle('is-hidden', !state.canCamera);
+    pillHint.classList.toggle('is-hidden', !state.canHint);
+    pillFs.textContent = document.fullscreenElement ? '退全屏' : '全屏';
+
+    if (!inExplore && joyPointerId === null) {
+      inputState.mx = 0;
+      inputState.my = 0;
+      joySprint = false;
+    }
+    if (!inHidden) setHeldAction('hold_breath', false);
+  }
+
+  // Floating joystick
+  var joyPointerId = null;
+  var joyOriginX = 0;
+  var joyOriginY = 0;
+
+  function resetJoyVisual() {
+    if (!joyZone || !joyBase || !joyKnob) return;
+    var rect = joyZone.getBoundingClientRect();
+    var baseW = joyBase.offsetWidth || 108;
+    var isPort = document.body.classList.contains('aomen-portrait');
+    var restX = Math.max(baseW * 0.5 + 16, Math.min(rect.width * 0.36, 92));
+    var restY = Math.max(baseW * 0.5 + 16, rect.height - baseW * 0.5 - (isPort ? 56 : 24));
+    joyBase.style.left = restX + 'px';
+    joyBase.style.top = restY + 'px';
+    joyKnob.style.transform = 'translate(0px, 0px)';
+    joyBase.classList.remove('is-active', 'is-sprint');
+  }
+
+  function updateJoy(clientX, clientY) {
+    var rect = joyZone.getBoundingClientRect();
+    var maxR = Math.max(32, (joyBase.offsetWidth || 108) * 0.42);
+    var dx = clientX - rect.left - joyOriginX;
+    var dy = clientY - rect.top - joyOriginY;
+    var dist = Math.hypot(dx, dy);
+    var clamped = Math.min(dist, maxR);
+    var ang = Math.atan2(dy, dx);
+    var kx = dist > 0.01 ? Math.cos(ang) * clamped : 0;
+    var ky = dist > 0.01 ? Math.sin(ang) * clamped : 0;
+    joyKnob.style.transform = 'translate(' + kx.toFixed(1) + 'px, ' + ky.toFixed(1) + 'px)';
+
+    var norm = dist / maxR;
+    if (norm < 0.10) {
+      inputState.mx = 0;
+      inputState.my = 0;
+      joySprint = false;
+      joyBase.classList.remove('is-sprint');
+    } else {
+      var scaled = Math.min(1.0, (norm - 0.10) / 0.78);
+      inputState.mx = +(Math.cos(ang) * scaled).toFixed(3);
+      inputState.my = +(Math.sin(ang) * scaled).toFixed(3);
+      joySprint = !!(state.prefAutoSprint && norm >= 0.88 && !state.crouching);
+      joyBase.classList.toggle('is-sprint', joySprint);
+    }
+    inputState.sp = !!(joySprint || manualSprint);
+  }
+
+  joyZone.addEventListener('pointerdown', function (e) {
+    unlockAudio();
+    if (joyPointerId !== null) return;
+    e.preventDefault();
+    e.stopPropagation();
+    joyPointerId = e.pointerId;
+    try { joyZone.setPointerCapture(e.pointerId); } catch (_err) {}
+    var rect = joyZone.getBoundingClientRect();
+    var pad = (joyBase.offsetWidth || 108) * 0.5 + 8;
+    joyOriginX = Math.max(pad, Math.min(rect.width - pad, e.clientX - rect.left));
+    joyOriginY = Math.max(pad, Math.min(rect.height - pad, e.clientY - rect.top));
+    joyBase.style.left = joyOriginX + 'px';
+    joyBase.style.top = joyOriginY + 'px';
+    joyBase.classList.add('is-active');
+    updateJoy(e.clientX, e.clientY);
+  });
+
+  joyZone.addEventListener('pointermove', function (e) {
+    if (e.pointerId !== joyPointerId) return;
+    e.preventDefault();
+    updateJoy(e.clientX, e.clientY);
+  });
+
+  function endJoy(e) {
+    if (e.pointerId !== joyPointerId) return;
+    joyPointerId = null;
+    inputState.mx = 0;
+    inputState.my = 0;
+    joySprint = false;
+    inputState.sp = !!manualSprint;
+    resetJoyVisual();
+  }
+  joyZone.addEventListener('pointerup', endJoy);
+  joyZone.addEventListener('pointercancel', endJoy);
+
+  // Right-side aim pad
+  var aimPointerId = null;
+  var aimOriginX = 0;
+  var aimOriginY = 0;
+
+  aimZone.addEventListener('pointerdown', function (e) {
+    unlockAudio();
+    if (aimPointerId !== null) return;
+    e.preventDefault();
+    e.stopPropagation();
+    aimPointerId = e.pointerId;
+    try { aimZone.setPointerCapture(e.pointerId); } catch (_err) {}
+    var rect = aimZone.getBoundingClientRect();
+    aimOriginX = e.clientX - rect.left;
+    aimOriginY = e.clientY - rect.top;
+    aimReticle.style.left = aimOriginX + 'px';
+    aimReticle.style.top = aimOriginY + 'px';
+    aimReticle.style.display = 'block';
+  });
+
+  aimZone.addEventListener('pointermove', function (e) {
+    if (e.pointerId !== aimPointerId) return;
+    e.preventDefault();
+    var rect = aimZone.getBoundingClientRect();
+    var dx = (e.clientX - rect.left) - aimOriginX;
+    var dy = (e.clientY - rect.top) - aimOriginY;
+    var len = Math.hypot(dx, dy);
+    if (len >= 10) {
+      inputState.ax = +(dx / len).toFixed(3);
+      inputState.ay = +(dy / len).toFixed(3);
+      inputState.aa = true;
+      aimNeedle.style.transform = 'rotate(' + Math.atan2(dy, dx) + 'rad)';
+    }
+  });
+
+  function endAim(e) {
+    if (e.pointerId !== aimPointerId) return;
+    aimPointerId = null;
+    inputState.aa = false;
+    aimReticle.style.display = 'none';
+  }
+  aimZone.addEventListener('pointerup', endAim);
+  aimZone.addEventListener('pointercancel', endAim);
+
+  // Tap/hold helpers for buttons
+  function bindButton(el, onDown, onUp) {
+    var activeId = null;
+    el.addEventListener('pointerdown', function (e) {
+      unlockAudio();
+      e.preventDefault();
+      e.stopPropagation();
+      if (activeId !== null) return;
+      activeId = e.pointerId;
+      try { el.setPointerCapture(e.pointerId); } catch (_err) {}
+      el.classList.add('is-down');
+      haptic(10);
+      if (onDown) onDown();
+    });
+    function finish(e) {
+      if (e.pointerId !== activeId) return;
+      activeId = null;
+      el.classList.remove('is-down');
+      if (onUp) onUp();
+    }
+    el.addEventListener('pointerup', finish);
+    el.addEventListener('pointercancel', finish);
+  }
+
+  bindButton(btnPrimary, function () {
+    if (btnPrimary.dataset.holdAction) {
+      setHeldAction(btnPrimary.dataset.holdAction, true);
+    } else if (btnPrimary.dataset.tapAction) {
+      pulseAction(btnPrimary.dataset.tapAction);
+    }
+  }, function () {
+    if (btnPrimary.dataset.holdAction) {
+      setHeldAction(btnPrimary.dataset.holdAction, false);
+    }
+  });
+
+  bindButton(btnFlashlight, function () { pulseAction('flashlight'); });
+  bindButton(btnCrouch, function () { pulseAction('crouch'); });
+  bindButton(btnFlash, function () { pulseAction('camera_flash'); });
+  bindButton(btnExitHide, function () { pulseAction('interact'); });
+  bindButton(btnSprint, function () {
+    manualSprint = true;
+    inputState.sp = true;
+  }, function () {
+    manualSprint = false;
+    inputState.sp = !!joySprint;
+  });
+
+  bindButton(btnModalBack, function () {
+    pulseAction(btnModalBack.dataset.backAction || 'pause');
+  });
+
+  var actionPills = topBar.querySelectorAll('.ao-pill[data-act]');
+  for (var i = 0; i < actionPills.length; i++) {
+    (function (btn) {
+      bindButton(btn, function () { pulseAction(btn.dataset.act); });
+    })(actionPills[i]);
+  }
+
+  bindButton(pillFs, function () {
+    try {
+      if (!document.fullscreenElement) {
+        var el = document.documentElement;
+        if (el.requestFullscreen) el.requestFullscreen().catch(function () {});
+      } else if (document.exitFullscreen) {
+        document.exitFullscreen().catch(function () {});
+      }
+    } catch (_e) {}
+  });
+
+  document.addEventListener('touchstart', unlockAudio, { passive: true });
+  window.addEventListener('resize', updateLayout);
+  window.addEventListener('orientationchange', function () { setTimeout(updateLayout, 120); });
+  window.addEventListener('blur', releaseAllHeld);
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) releaseAllHeld();
+  });
+  document.addEventListener('fullscreenchange', syncUiFromState);
+
+  window.__AOMEN_BRIDGE__ = {
+    poll: function () {
+      var payload = {
+        ta: isTouchActive(),
+        mx: inputState.mx,
+        my: inputState.my,
+        sp: inputState.sp,
+        ax: inputState.ax,
+        ay: inputState.ay,
+        aa: inputState.aa,
+        ev: inputState.ev.splice(0, inputState.ev.length)
+      };
+      return JSON.stringify(payload);
+    },
+    setState: function (next) {
+      if (next && typeof next === 'object') {
+        for (var k in next) state[k] = next[k];
+        syncUiFromState();
+      }
+    },
+    getState: function () {
+      return Object.assign({ touchActive: isTouchActive(), portrait: document.body.classList.contains('aomen-portrait') }, state);
+    }
+  };
+
+  syncUiFromState();
+})();
+</script>

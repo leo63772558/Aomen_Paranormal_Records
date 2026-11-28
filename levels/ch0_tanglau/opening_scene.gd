@@ -2,7 +2,7 @@ extends Node2D
 
 @export var stage_kind: String = "street"
 const GIRL_FOOT := Vector2(405, 226)
-const AHHAO_STREET_FOOT := Vector2(525, 238)
+const AHHAO_STREET_FOOT := Vector2(465, 239)
 const ENTRY := Vector2(487, 159)
 const METER := Vector2(210, 139)
 const AMMO := preload("res://levels/ch2_guia/bunker_ammo_layout.gd")
@@ -69,6 +69,8 @@ var gate_aperture_shadow: LightOccluder2D
 var pit_bones: Sprite2D
 var spare_battery
 var family: Array[CharacterBody2D] = []
+var ammo_door_lock_timer := 0.0
+var ammo_layout: Node2D
 var capture_locked := false
 var service_aperture: StaticBody2D
 var service_aperture_shadow: LightOccluder2D
@@ -81,7 +83,13 @@ func _ready() -> void:
 		hide()
 		call_deferred("resume_saved_room")
 		return
-	var ambience_kind := "bunker" if stage_kind in ["bunker_descent", "bunker_hall", "bunker_ammo"] else ("crypt" if stage_kind in ["maintenance", "crypt", "crypt_hall", "crypt_archive"] else "")
+	var ambience_kind: String = {
+		"street": "street", "foyer": "tenement", "corridor": "tenement", "room304": "tenement",
+		"maintenance": "crypt", "yard": "tenement", "exit_lane": "street",
+		"crypt": "crypt", "crypt_hall": "crypt", "crypt_archive": "crypt",
+		"hill_base": "bunker", "hill_shelter": "bunker", "bunker_descent": "bunker",
+		"bunker_hall": "bunker", "bunker_ammo": "bunker"
+	}[stage_kind]
 	AudioManager.set_scene_ambience(ambience_kind)
 	pose_data = JSON.parse_string(FileAccess.get_file_as_string("res://core/data/opening_art.json"))
 	dialogues = JSON.parse_string(FileAccess.get_file_as_string("res://core/data/opening_dialogues.json"))
@@ -92,7 +100,8 @@ func _ready() -> void:
 	floor_layer.background_texture = load(background_path)
 	if stage_kind == "bunker_ammo":
 		floor_layer.free()
-		add_child(AMMO.new())
+		ammo_layout = AMMO.new()
+		add_child(ammo_layout)
 	else:
 		add_child(floor_layer)
 	if stage_kind == "hill_shelter":
@@ -177,6 +186,8 @@ func _ready() -> void:
 		_paint_machine_wall()
 	if stage_kind == "bunker_descent":
 		_create_pit_bones()
+	if stage_kind == "street":
+		_build_street_macau_stalls()
 	if stage_kind == "hill_base":
 		add_bunker_prop(Vector2(240,270), false)
 	if stage_kind == "hill_shelter" and not GameState.opening_flags.bunker_oil_found:
@@ -184,6 +195,7 @@ func _ready() -> void:
 	if stage_kind == "crypt_archive":
 		LevelGeometry.wall(self, Rect2(64,205,115,24))
 		LevelGeometry.wall(self, Rect2(190,205,280,10))
+		_decorate_crypt_archive()
 	if stage_kind == "hill_base":
 		hill_smoke = Node2D.new()
 		hill_smoke.position = Vector2(139,128)
@@ -251,7 +263,7 @@ func _ready() -> void:
 		bed_art.scale = Vector2(110, 170) / bed_art.texture.get_size()
 		room_bed.add_child(bed_art)
 		if GameState.opening_flags.room_bed_moved:
-			room_bed.position = Vector2(-145, 10)
+			room_bed.position = Vector2(-88, 8)
 			room_bed_shadow.position = room_bed.position
 		LevelGeometry.wall(self, Rect2(70, 215, 21, 95))
 		LevelGeometry.wall(self, Rect2(528, 244, 48, 66))
@@ -305,16 +317,15 @@ func _ready() -> void:
 		follow.limit_right = int(AMMO.MAP_SIZE.x)
 		follow.limit_bottom = int(AMMO.MAP_SIZE.y)
 	camera_pose = PoseArt.sprite(load("res://assets/characters/dawen_camera_006.png"), pose_data["camera"])
-	if stage_kind == "crypt_archive":
-		camera_pose.scale *= 1.8
 	pastry_pose = PoseArt.sprite(load("res://assets/characters/dawen_pastry_006.png"), pose_data["pastry"])
+	camera_pose.scale *= player.visual_size_multiplier
+	pastry_pose.scale *= player.visual_size_multiplier
 	add_child(camera_pose)
 	add_child(pastry_pose)
 	camera_pose.hide()
 	pastry_pose.hide()
 	work_pose = PoseArt.sprite(load("res://assets/characters/dawen_pliers_006.png"),pose_data.pliers)
-	if stage_kind in ["corridor", "room304", "maintenance", "yard", "exit_lane", "crypt", "crypt_hall", "crypt_archive", "hill_base", "hill_shelter", "bunker_descent", "bunker_hall", "bunker_ammo"]:
-		work_pose.scale *= 1.8
+	work_pose.scale *= player.visual_size_multiplier
 	add_child(work_pose)
 	work_pose.hide()
 	stair_light=PointLight2D.new()
@@ -338,6 +349,7 @@ func _ready() -> void:
 		_place_crypt_trail()
 	hud = preload("res://ui/quiet_hud.gd").new()
 	add_child(hud)
+	hud.inventory_page_factory = _make_bag
 	hud.close_requested.connect(close_dialog)
 	hud.phone_requested.connect(show_phone_notes)
 	hud.pause_requested.connect(pause_menu)
@@ -349,12 +361,14 @@ func _ready() -> void:
 	hud.root.add_child(camera_view)
 	camera_view.shutter_requested.connect(take_photo)
 	camera_view.cancel_requested.connect(stop_camera)
-	if stage_kind == "foyer":
-		var body: String="楼梯口的灯仍亮着，可以上三零四找嘉敏了。" if GameState.opening_flags.floor3_power else dialogues.foyer.subtitle
+	if stage_kind == "foyer" and not GameState.opening_flags.foyer_intro_seen and not GameState.opening_flags.meter_cover_open and not GameState.opening_flags.floor3_power:
+		GameState.opening_flags.foyer_intro_seen = true
+		checkpoint()
+		var body: String = dialogues.foyer.subtitle
 		if not GameState.opening_load_notice.is_empty():
-			body=GameState.opening_load_notice+"\n\n"+body
-			GameState.opening_load_notice=""
-		show_text("福荣里 · 门厅",body)
+			body = GameState.opening_load_notice + "\n\n" + body
+			GameState.opening_load_notice = ""
+		show_text("福荣里 · 门厅", body)
 	elif not GameState.opening_load_notice.is_empty():
 		hud.notify(GameState.opening_load_notice)
 		GameState.opening_load_notice=""
@@ -371,15 +385,37 @@ func _ready() -> void:
 		)
 		ring_timer.start()
 	if stage_kind == "street" and GameState.pending_entry_id == "arrival" and not GameState.opening_flags.photo_taken:
+		AudioManager.play_voice("ahhao_street_01", -1.5)
 		show_text("第一天 · 澳门大三巴街", "前面就是大三巴！哥，你和我姐站近一点，我来选拍照的位置。", [], Callable(), "黄梓豪")
+	if stage_kind == "foyer":
+		GameState.unlock_macau_guide("tanglau_foyer", false)
+	elif stage_kind == "room304":
+		GameState.unlock_macau_guide("room304_secret", false)
+	elif stage_kind == "exit_lane":
+		GameState.unlock_macau_guide("red_payphone", false)
+	elif stage_kind == "hill_steps":
+		GameState.unlock_macau_guide("ninety_nine_steps", false)
+	elif stage_kind == "crypt":
+		GameState.unlock_macau_guide("st_pauls")
+	elif stage_kind == "hill_base":
+		GameState.unlock_macau_guide("guia_lighthouse")
 	if stage_kind == "hill_base" and GameState.pending_entry_id == "from_archive" and not GameState.opening_flags.hill_stele_seen:
 		show_text("松山山麓", "防空洞在山道上方。先看看入口附近留下的物件。")
-	if stage_kind == "bunker_hall" and GameState.pending_entry_id == "from_steps" and GameState.opening_flags.ammo_chase_cleared:
-		hud.notify("机房的风声恢复了。沿来路上楼，带录音走出铁门。")
+	if stage_kind == "bunker_hall" and GameState.pending_entry_id == "from_steps":
+		if GameState.opening_flags.ammo_chase_cleared:
+			hud.notify("机房的风声恢复了。带上录音，沿来路走出铁门。")
+		elif GameState.has_demo_item("bunker_recording"):
+			hud.notify("录音机还在背包里。右侧小拱门通往刚才的石阶。")
 	elif stage_kind == "bunker_hall" and GameState.demo_pursuit == "hall":
 		_begin_hall_chase()
-	if stage_kind == "hill_shelter" and GameState.pending_entry_id == "from_descent" and GameState.opening_flags.ammo_chase_cleared:
-		hud.notify("你已经站在铁门外。到门边复听带出的录音。")
+	elif stage_kind == "bunker_ammo" and GameState.has_demo_item("bunker_recording") and not GameState.opening_flags.ammo_chase_cleared and GameState.demo_pursuit.is_empty():
+		# CRITICAL: On retry after being caught by the 3 red ghosts, ALWAYS re-arm the chase until the player genuinely escapes!
+		call_deferred("start_red_passage")
+	if stage_kind == "hill_shelter" and _can_conclude_bunker_recording() and not GameState.opening_flags.demo_case_closed:
+		if GameState.opening_flags.bunker_recording_verified:
+			_on_bunker_recording_verified()
+		else:
+			hud.notify("你已经逃出铁门。按 B 从背包复听录音，或在门边按 E。")
 	if stage_kind == "yard" and not GameState.opening_flags.yard_escaped:
 		show_text("后院", "身后有脚步逼近。右侧拱门透着光——按住 Shift 冲过去。", [], start_yard_chase)
 	if stage_kind == "crypt_hall" and not GameState.opening_flags.priest_escaped:
@@ -401,17 +437,7 @@ func _place_crypt_trail() -> void:
 		step.modulate = Color(0.6, 0.66, 0.57, 0.24)
 		step.z_index = 1
 		add_child(step)
-	# A new chalk arrow bends from the sealed niche toward the scuffed side door.
-	var arrow := Line2D.new()
-	arrow.points = PackedVector2Array([
-		Vector2(345, 157), Vector2(361, 162), Vector2(376, 162),
-		Vector2(370, 156), Vector2(376, 162), Vector2(369, 166)
-	])
-	arrow.default_color = Color("c0b695", 0.77)
-	arrow.width = 1.3
-	arrow.antialiased = true
-	arrow.z_index = 1
-	add_child(arrow)
+	# Removed cartoon vector chalk arrow per visual quality polish; wet shoe prints guide naturally.
 
 func _place_demo_props() -> void:
 	if SPARE_BATTERIES.has(stage_kind):
@@ -423,65 +449,56 @@ func _place_demo_props() -> void:
 			add_child(spare_battery)
 	match stage_kind:
 		"street":
-			_add_prop_fixture(Vector2(167, 156), "iron_box")
-			_add_demo_prop("insulated_bridge", Vector2(167, 156), Vector2(20, 14), "取出街边检修盒里的跨接片", Vector2(167, 193))
+			_add_demo_prop("insulated_bridge", Vector2(167, 156), Vector2(22, 15), "拾起街边墙脚的跨接片", Vector2(167, 193))
 		"foyer":
-			_add_prop_fixture(Vector2(124, 134), "wood_shelf")
-			_add_prop_fixture(Vector2(304, 134), "clipboard_stand")
-			_add_demo_prop("ceramic_fuse", Vector2(124, 134), Vector2(18, 14), "取出信箱架上的陶瓷保险芯", Vector2(124, 170))
-			_add_demo_prop("power_record", Vector2(304, 134), Vector2(22, 17), "查看挂板上的电工值班单", Vector2(304, 165))
+			_add_demo_prop("ceramic_fuse", Vector2(124, 136), Vector2(20, 15), "拾起信箱下方的陶瓷保险芯", Vector2(124, 170))
+			_add_demo_prop("power_record", Vector2(304, 136), Vector2(24, 18), "拾起电表箱旁的值班单", Vector2(304, 165))
 		"corridor":
 			if GameState.opening_flags.wet_tag_left or GameState.opening_flags.shadow_passed:
 				_add_demo_prop("wet_tag", Vector2(484, 229), Vector2(26, 18), "拾起门缝下湿透的检修签")
 		"hill_base":
-			_add_prop_fixture(Vector2(293, 254), "clipboard_stand")
 			_add_demo_prop("gate_work_order", Vector2(293, 254), Vector2(26, 20), "拾取石台上的换锁工单")
 		"bunker_descent":
 			if not GameState.opening_flags.pit_stone_thrown:
 				_add_demo_prop("loose_stone", Vector2(418, 235), Vector2(22, 17), "捡起碎石")
-			preload("res://core/components/physics_prop.gd").spawn(self, "tin_can", Vector2(288, 215), Rect2(250, 150, 210, 140))
-		"bunker_hall":
-			preload("res://core/components/physics_prop.gd").spawn(self, "tin_can", Vector2(254, 235), Rect2(140, 185, 390, 105))
-			preload("res://core/components/physics_prop.gd").spawn(self, "glass_bottle", Vector2(382, 248), Rect2(140, 185, 390, 105))
 		"bunker_ammo":
 			_add_demo_prop("bunker_recording", AMMO.RECORDING, Vector2(30, 24), "拾取嘉敏遗落的采访录音机")
 		"room304":
 			if not GameState.has_demo_item("service_handle"):
-				_add_prop_fixture(Vector2(265, 218), "wood_shelf")
-				_add_demo_prop("service_grip", Vector2(265, 218), Vector2(28, 19), "拾取抽屉托盘里的旧握柄")
+				_add_demo_prop("service_grip", Vector2(265, 218), Vector2(28, 19), "拾取旧握柄")
 		"crypt":
-			_add_prop_fixture(Vector2(393, 151), "clipboard_stand")
 			_add_demo_prop("crypt_old_photo", Vector2(393, 151), Vector2(26, 18), "拿起石龛台上的1961地宫旧照")
 		"maintenance":
 			if not GameState.has_demo_item("service_handle"):
-				_add_prop_fixture(Vector2(418, 211), "iron_box")
-				_add_demo_prop("service_spindle", Vector2(418, 211), Vector2(24, 18), "取出管线托盒里的方轴")
+				_add_demo_prop("service_spindle", Vector2(418, 211), Vector2(24, 18), "拾取管线旁的方轴")
 
-func _add_prop_fixture(at: Vector2, kind: String) -> void:
-	var mount := Node2D.new()
-	mount.position = at
-	mount.z_index = int(at.y) - 1
-	# Ground contact shadow
-	var shadow := Polygon2D.new()
-	shadow.polygon = PackedVector2Array([Vector2(-16, 4), Vector2(16, 4), Vector2(18, 10), Vector2(-18, 10)])
-	shadow.color = Color(0.02, 0.02, 0.02, 0.48)
-	mount.add_child(shadow)
-	# Front face of crate / wall shelf / metal utility cabinet
-	var front := Polygon2D.new()
-	front.polygon = PackedVector2Array([Vector2(-14, -2), Vector2(14, -2), Vector2(14, 7), Vector2(-14, 7)])
-	front.color = Color("1f2622") if kind == "iron_box" else (Color("2e1e14") if kind == "wood_shelf" else Color("241f18"))
-	mount.add_child(front)
-	# Top tray surface
-	var top := Polygon2D.new()
-	top.polygon = PackedVector2Array([Vector2(-14, -12), Vector2(14, -12), Vector2(14, -2), Vector2(-14, -2)])
-	top.color = Color("344039") if kind == "iron_box" else (Color("4f3622") if kind == "wood_shelf" else Color("3b3326"))
-	mount.add_child(top)
-	var rim := Line2D.new()
-	rim.points = PackedVector2Array([Vector2(-14, -12), Vector2(14, -12), Vector2(14, 7), Vector2(-14, 7), Vector2(-14, -12)])
-	rim.width = 1.2
-	rim.default_color = Color("6b7668") if kind == "iron_box" else Color("856947")
-	mount.add_child(rim)
-	add_child(mount)
+func _add_pickup_glint(parent: Node2D) -> void:
+	# Slightly larger warm golden glow + delicate breathing outer contour ring so collectibles are unmistakable yet natural
+	var glint := PointLight2D.new()
+	glint.name = "PickupGlint"
+	glint.texture = preload("res://assets/lighting/soft_light.png")
+	glint.texture_scale = 0.34
+	glint.color = Color("ffe39e")
+	glint.energy = 0.48
+	glint.position = Vector2(0, -5)
+	parent.add_child(glint)
+	var ring := Line2D.new()
+	ring.name = "PickupContourRing"
+	var pts := PackedVector2Array()
+	for i in range(19):
+		var a := TAU * float(i) / 18.0
+		pts.append(Vector2(cos(a) * 14.0, sin(a) * 8.5 - 4.0))
+	ring.points = pts
+	ring.width = 1.25
+	ring.default_color = Color("f4d98c", 0.45)
+	ring.antialiased = true
+	ring.z_index = -1
+	parent.add_child(ring)
+	var tw := parent.create_tween().set_loops()
+	tw.tween_property(glint, "energy", 0.84, 0.85).set_trans(Tween.TRANS_SINE)
+	tw.parallel().tween_property(ring, "modulate:a", 0.88, 0.85).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(glint, "energy", 0.32, 0.85).set_trans(Tween.TRANS_SINE)
+	tw.parallel().tween_property(ring, "modulate:a", 0.25, 0.85).set_trans(Tween.TRANS_SINE)
 
 func _add_demo_prop(item_id: String, at: Vector2, dimensions: Vector2, action: String, interact_override := Vector2.ZERO) -> void:
 	if GameState.has_demo_item(item_id):
@@ -502,8 +519,9 @@ func _add_demo_prop(item_id: String, at: Vector2, dimensions: Vector2, action: S
 	var art := Sprite2D.new()
 	art.texture = texture
 	art.scale = dimensions / texture.get_size()
-	art.position = Vector2(0, -6)
+	art.position = Vector2(0, -5)
 	body.add_child(art)
+	_add_pickup_glint(body)
 	add_child(body)
 	demo_props[item_id] = body
 	var interact_at := interact_override if interact_override != Vector2.ZERO else (at + Vector2(0, 12))
@@ -520,10 +538,10 @@ func _collect_demo_prop(item_id: String) -> void:
 	demo_props.erase(item_id)
 	demo_prop_targets.erase(item_id)
 	checkpoint()
-	AudioManager.play_world_effect("metal_cover")
 	if item_id == "bunker_recording":
+		AudioManager.play_voice("jiamin_bunker_tape", -1.0)
 		AudioManager.play_world_effect("recording_fragment")
-		show_text("嘉敏的求生留言", "录音机留下了嘉敏在洞内的留言。\n\n转写：‘大文……阿豪……别从正门下来。这里有三道人影，楼梯口被堵住了。我只能试排风竖井。’\n\n阿豪的名字让大文一时说不出话。右侧响起拖地脚步，先把录音机带回机房。", [], start_red_passage, "陈大文", DemoItems.texture(item_id))
+		show_text("嘉敏的求生留言", "录音机录下了嘉敏在子弹房匆忙逃离前的留言：\n\n「大文……阿豪……别从正门下来！这里有三道红衣人影堵死了楼梯口，我把录音机丢这儿了，正往排风竖井逃出去，直接去大关斜巷旧肉铺那边找路！」\n\n身后铁门砰地反锁——三道红衣影从坑道暗处围了过来！", [], start_red_passage, "陈大文", DemoItems.texture(item_id))
 	else:
 		show_text(DemoItems.title(item_id), DemoItems.description(item_id) + "\n\n已收进背包。按 B 回看。", [], Callable(), "陈大文", DemoItems.texture(item_id))
 
@@ -582,9 +600,15 @@ func start_red_passage() -> void:
 	GameState.demo_pursuit = "ammo"
 	AudioManager.start_chase_music()
 	var grid := AMMO.navigation(AMMO.INNER_ROOM, AMMO.pit_colliders())
-	_spawn_family([Vector2(380, 121), Vector2(64, 255), Vector2(706, 403)], grid, 1.30)
+	_spawn_family([Vector2(380, 121), Vector2(64, 255), Vector2(706, 403)], grid, 1.10)
+	for figure in family:
+		figure.speed_scale = 0.86
+	AudioManager.play_at(self, "iron_slam", AMMO.EXIT)
 	AudioManager.play_at(self, "hall_wail", Vector2(706, 403))
-	hud.notify("三个人影在坑边停下。绕开他们，回南边的机房门。")
+	ammo_door_lock_timer = 5.0
+	if is_instance_valid(ammo_layout):
+		ammo_layout.set_exit_locked(true, ammo_door_lock_timer)
+	hud.notify("南门锁住了。沿坑间石道绕行，等铁锁松开。")
 	update_objective()
 
 func _spawn_family(positions: Array, navigation: AStarGrid2D, delay: float) -> void:
@@ -627,28 +651,163 @@ func _retry_family() -> void:
 	change_opening_room("ch2_bunker_ammo", "from_hall")
 
 func _paint_machine_wall() -> void:
-	var font := SystemFont.new()
-	font.font_names = PackedStringArray(["SimSun", "Noto Serif CJK SC"])
+	var font := UiFont.song()
 	var writing := Label.new()
 	writing.text = "89  白线到头\n脚印回去，人莫回头"
-	writing.position = Vector2(252, 104)
+	writing.position = Vector2(256, 108)
 	writing.rotation = -0.048
 	writing.add_theme_font_override("font", font)
-	writing.add_theme_font_size_override("font_size", 14)
-	writing.add_theme_color_override("font_color", Color("dfd4a9"))
-	writing.add_theme_color_override("font_shadow_color", Color("2c3022"))
+	writing.add_theme_font_size_override("font_size", 11)
+	writing.add_theme_color_override("font_color", Color("c4b995", 0.54))
+	writing.add_theme_color_override("font_shadow_color", Color("1c2018", 0.45))
 	writing.add_theme_constant_override("shadow_offset_y", 1)
 	add_child(writing)
 
+func _build_street_macau_stalls() -> void:
+	# Tangible painted Macau cultural props + real human NPC entities on ch0_street:
+	# Portuguese Egg-Tart display cart + 陈阿婆 & 廿四味 Brass Herbal Tea cart + 梁伯
+	if ResourceLoader.exists("res://assets/props/macau_tart_stand_v10.png"):
+		var tart_tex := load("res://assets/props/macau_tart_stand_v10.png") as Texture2D
+		if tart_tex != null:
+			var tart_stand := Sprite2D.new()
+			tart_stand.name = "MacauTartStandProp"
+			tart_stand.texture = tart_tex
+			tart_stand.position = Vector2(106, 154)
+			tart_stand.scale = Vector2(46.0 / float(tart_tex.get_width()), 44.0 / float(tart_tex.get_height()))
+			tart_stand.z_index = 154
+			add_child(tart_stand)
+			LevelGeometry.wall(self, Rect2(91, 154, 32, 15)).name = "TartStandFootprint"
+			if ResourceLoader.exists("res://assets/characters/granny_npc_feedback.png"):
+				var granny_tex := load("res://assets/characters/granny_npc_feedback.png") as Texture2D
+				if granny_tex != null:
+					var granny_npc := Sprite2D.new()
+					granny_npc.name = "TartGrannyNPC"
+					granny_npc.texture = granny_tex
+					granny_npc.position = Vector2(134, 179)
+					granny_npc.offset.y = -granny_tex.get_height() * 0.5
+					var g_base_scale := Vector2.ONE * (68.0 / float(granny_tex.get_height()))
+					granny_npc.scale = g_base_scale
+					granny_npc.z_index = 176
+					add_child(granny_npc)
+					LevelGeometry.wall(self, Rect2(126, 168, 15, 12)).name = "TartGrannyFootprint"
+					var gtw := create_tween().set_loops()
+					gtw.tween_property(granny_npc, "scale:y", g_base_scale.y * 1.015, 1.35).set_trans(Tween.TRANS_SINE)
+					gtw.tween_property(granny_npc, "scale:y", g_base_scale.y * 0.99, 1.35).set_trans(Tween.TRANS_SINE)
+			var tart_glow := PointLight2D.new()
+			tart_glow.position = Vector2(118, 146)
+			tart_glow.texture = preload("res://assets/lighting/soft_light.png")
+			tart_glow.texture_scale = 0.26
+			tart_glow.color = Color("f6c26b")
+			tart_glow.energy = 0.48
+			add_child(tart_glow)
+	if ResourceLoader.exists("res://assets/props/macau_herbal_cart_v10.png"):
+		var herb_tex := load("res://assets/props/macau_herbal_cart_v10.png") as Texture2D
+		if herb_tex != null:
+			var herb_cart := Sprite2D.new()
+			herb_cart.name = "MacauHerbalCartProp"
+			herb_cart.texture = herb_tex
+			herb_cart.position = Vector2(548, 246)
+			herb_cart.scale = Vector2(46.0 / float(herb_tex.get_width()), 48.0 / float(herb_tex.get_height()))
+			herb_cart.z_index = 246
+			add_child(herb_cart)
+			LevelGeometry.wall(self, Rect2(534, 250, 28, 16)).name = "HerbalCartFootprint"
+			if ResourceLoader.exists("res://assets/characters/uncle_npc_feedback.png"):
+				var uncle_tex := load("res://assets/characters/uncle_npc_feedback.png") as Texture2D
+				if uncle_tex != null:
+					var uncle_npc := Sprite2D.new()
+					uncle_npc.name = "TeaUncleNPC"
+					uncle_npc.texture = uncle_tex
+					uncle_npc.position = Vector2(520, 270)
+					uncle_npc.offset.y = -uncle_tex.get_height() * 0.5
+					var u_base_scale := Vector2.ONE * (72.0 / float(uncle_tex.get_height()))
+					uncle_npc.scale = u_base_scale
+					uncle_npc.z_index = 267
+					add_child(uncle_npc)
+					LevelGeometry.wall(self, Rect2(513, 258, 15, 13)).name = "TeaUncleFootprint"
+					var utw := create_tween().set_loops()
+					utw.tween_property(uncle_npc, "scale:y", u_base_scale.y * 1.015, 1.45).set_trans(Tween.TRANS_SINE)
+					utw.tween_property(uncle_npc, "scale:y", u_base_scale.y * 0.99, 1.45).set_trans(Tween.TRANS_SINE)
+			var herb_glow := PointLight2D.new()
+			herb_glow.position = Vector2(536, 236)
+			herb_glow.texture = preload("res://assets/lighting/soft_light.png")
+			herb_glow.texture_scale = 0.24
+			herb_glow.color = Color("e8b45a")
+			herb_glow.energy = 0.42
+			add_child(herb_glow)
+
+func _decorate_crypt_archive() -> void:
+	# Enrich Chapter 1 Archive Room ("资料房") using ONLY authentic painted sprites + warm lamp glow + drifting dust
+	# (ZERO flat vector polygons overlapping the painted shelves or floor!).
+	var decor := Node2D.new()
+	decor.name = "CryptArchiveDecor"
+	decor.z_index = 192
+	add_child(decor)
+
+	# 1. Scattered painted archival evidence props seated naturally on the wooden desk & right floor corner
+	var desk_props := [
+		["res://assets/props/crypt_photo_013.png", Vector2(128, 134), Vector2(24, 16), -0.14],
+		["res://assets/props/crypt_plan_013.png", Vector2(158, 136), Vector2(26, 17), 0.10],
+		["res://assets/props/ch6_pipe_blueprint_v11.png", Vector2(492, 212), Vector2(42, 24), -0.06],
+		["res://assets/props/crypt_doodle_013.png", Vector2(242, 218), Vector2(22, 15), 0.22],
+		["res://assets/props/archive_case_252.png", Vector2(494, 186), Vector2(30, 26), 0.0]
+	]
+	for pinfo in desk_props:
+		if ResourceLoader.exists(String(pinfo[0])):
+			var sp := Sprite2D.new()
+			sp.texture = load(String(pinfo[0])) as Texture2D
+			if sp.texture != null:
+				sp.position = pinfo[1]
+				sp.rotation = float(pinfo[3])
+				sp.scale = (pinfo[2] as Vector2) / sp.texture.get_size()
+				sp.modulate = Color(0.86, 0.84, 0.78, 0.96)
+				decor.add_child(sp)
+
+	# 2. Warm emerald-amber desk lamp glow & subtle ceiling tungsten pools over the archive bookshelves
+	var desk_glow := PointLight2D.new()
+	desk_glow.position = Vector2(142, 146)
+	desk_glow.texture = preload("res://assets/lighting/soft_light.png")
+	desk_glow.texture_scale = 0.48
+	desk_glow.color = Color("d8e6a8")
+	desk_glow.energy = 0.62
+	add_child(desk_glow)
+
+	var shelf_glow := PointLight2D.new()
+	shelf_glow.position = Vector2(320, 126)
+	shelf_glow.texture = preload("res://assets/lighting/soft_light.png")
+	shelf_glow.texture_scale = 0.64
+	shelf_glow.color = Color("f0c678")
+	shelf_glow.energy = 0.44
+	add_child(shelf_glow)
+
+	# 3. Gentle drifting archival dust motes in the warm lamp air
+	var dust := CPUParticles2D.new()
+	dust.position = Vector2(310, 175)
+	dust.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	dust.emission_rect_extents = Vector2(210, 55)
+	dust.amount = 26
+	dust.lifetime = 4.2
+	dust.preprocess = 2.0
+	dust.direction = Vector2(0.15, -1.0)
+	dust.spread = 45.0
+	dust.gravity = Vector2(0, -1.2)
+	dust.initial_velocity_min = 1.5
+	dust.initial_velocity_max = 5.5
+	dust.scale_amount_min = 0.8
+	dust.scale_amount_max = 1.6
+	dust.color = Color(0.92, 0.86, 0.70, 0.24)
+	dust.z_index = 260
+	add_child(dust)
+
 func _create_pit_bones() -> void:
-	var texture := DemoItems.prop_cell(11)
+	# Authentic AI-painted gritty 1990s HK horror skeletal remains (ZERO cartoon vector skulls!)
+	var texture: Texture2D = load("res://assets/props/bunker_pit_bones_v9.png") if ResourceLoader.exists("res://assets/props/bunker_pit_bones_v9.png") else DemoItems.prop_cell(11)
 	if texture == null:
 		return
 	pit_bones = Sprite2D.new()
 	pit_bones.texture = texture
-	pit_bones.position = Vector2(474, 136)
-	pit_bones.scale = Vector2(65, 38) / texture.get_size()
-	pit_bones.modulate = Color(0.72, 0.70, 0.61, 0.0)
+	pit_bones.position = Vector2(472, 166)
+	pit_bones.scale = Vector2(78.0, 74.0) / texture.get_size()
+	pit_bones.modulate = Color(0.86, 0.84, 0.78, 0.0)
 	add_child(pit_bones)
 
 func _inspect_pit() -> void:
@@ -697,7 +856,11 @@ func _throw_stone() -> void:
 	if is_instance_valid(arm):
 		arm.queue_free()
 	player.sprite.show()
-	AudioManager.play_at(self, "pit_drop", Vector2(471, 174))
+	AudioManager.play_at(self, "pit_drop", Vector2(471, 174), -3.0)
+	get_tree().create_timer(0.62, false).timeout.connect(func():
+		if is_inside_tree():
+			AudioManager.play_at(self, "pit_drop", Vector2(471, 174), -11.0)
+	)
 	GameState.opening_items.erase("loose_stone")
 	GameState.opening_flags.pit_stone_thrown = true
 	checkpoint()
@@ -765,19 +928,15 @@ func set_girl_pose(index: int) -> void:
 func _create_photo_marker() -> void:
 	if photo_marker != null:
 		return
-	photo_marker = Node2D.new()
+	photo_marker = Line2D.new()
 	photo_marker.position = Vector2(245, 258)
 	photo_marker.z_index = 8
-	var marker_script := GDScript.new()
-	marker_script.source_code = """extends Node2D
-func _draw() -> void:
-	var font := ThemeDB.fallback_font
-	draw_arc(Vector2.ZERO, 18.0, 0, TAU, 28, Color(0.95, 0.85, 0.45, 0.7), 1.5)
-	draw_arc(Vector2.ZERO, 5.0, 0, TAU, 16, Color(0.95, 0.85, 0.45, 0.85), 1.5)
-	draw_string(font, Vector2(-60, -22), "推荐拍照位 [ C 键 ]", HORIZONTAL_ALIGNMENT_CENTER, 120, 11, Color(0.95, 0.88, 0.65, 0.85))
-"""
-	marker_script.reload()
-	photo_marker.set_script(marker_script)
+	var ring := photo_marker as Line2D
+	ring.width = 1.5
+	ring.default_color = Color(0.98, 0.9, 0.58, 0.78)
+	ring.closed = true
+	for step in range(24):
+		ring.add_point(Vector2.from_angle(TAU * step / 24.0) * Vector2(15, 7))
 	add_child(photo_marker)
 
 func _process(_delta: float) -> void:
@@ -805,7 +964,7 @@ func _process(_delta: float) -> void:
 	if hiding:
 		hud.prompt.text = "[ E ] 离开衣柜"
 		return
-	var targets: Dictionary = {"jiamin": GIRL_FOOT, "entry": ENTRY} if stage_kind == "street" else ({"door304":Vector2(483,207), "downstairs":Vector2(320,300)} if stage_kind == "corridor" else ({"desk304":Vector2(300,208), "bed304":Vector2(500,240) if not GameState.opening_flags.room_bed_moved else Vector2(365,260), "leave304":Vector2(320,300)} if stage_kind == "room304" else {"meter": METER, "stairs": Vector2(520, 139), "exit": Vector2(320, 298)}))
+	var targets: Dictionary = {"jiamin": GIRL_FOOT, "entry": ENTRY} if stage_kind == "street" else ({"door304":Vector2(483,207), "downstairs":Vector2(320,300)} if stage_kind == "corridor" else ({"desk304":Vector2(300,208), "bed304":Vector2(500,240) if not GameState.opening_flags.room_bed_moved else Vector2(414,254), "leave304":Vector2(320,300)} if stage_kind == "room304" else {"meter": METER, "stairs": Vector2(520, 139), "exit": Vector2(320, 298)}))
 	if stage_kind in ["corridor", "room304"] and not GameState.opening_flags.jiamin_phone_found:
 		targets["fallen_phone"] = Vector2(345, 280) if stage_kind == "room304" else Vector2(442, 236)
 	if stage_kind == "room304" and GameState.opening_flags.room_bed_moved:
@@ -823,25 +982,41 @@ func _process(_delta: float) -> void:
 	if stage_kind == "crypt_hall":
 		targets = {"hall_exit":Vector2(550,185), "hall_back":Vector2(95,185)}
 	if stage_kind == "crypt_archive":
-		targets = {"archive_index":Vector2(125,230), "archive_exit":Vector2(545,205), "archive_back":Vector2(320,300)}
+		targets = {
+			"archive_index":Vector2(125,230),
+			"archive_lamp":Vector2(182,218),
+			"archive_1961":Vector2(248,195),
+			"archive_1985":Vector2(358,195),
+			"archive_2011":Vector2(455,195),
+			"archive_exit":Vector2(545,205),
+			"archive_back":Vector2(320,300)
+		}
 	if stage_kind == "hill_base":
 		targets = {"hill_stele":Vector2(330,218), "hill_steps":Vector2(500,218), "hill_shrine":Vector2(140,218), "hill_back":Vector2(320,300), "bunker_toolbox":Vector2(240,250)}
 	if stage_kind == "hill_shelter":
 		targets = {"shelter_door":Vector2(374,213), "shelter_back":Vector2(320,300)}
-		if GameState.opening_flags.ammo_chase_cleared:
+		var cleared_bunker: bool = GameState.opening_flags.ammo_chase_cleared or GameState.opening_flags.hill_steps_completed
+		if cleared_bunker:
 			targets["review_tape"] = Vector2(340,246)
+		if GameState.opening_flags.demo_case_closed:
+			targets["go_ch3_amparo"] = Vector2(320, 292)
 		if not GameState.opening_flags.bunker_oil_found:
 			targets["bunker_oil"] = Vector2(200,250)
 	if stage_kind == "bunker_descent":
 		targets = {"descent_return":Vector2(320,69), "descent_hall":Vector2(320,300), "descent_pit":Vector2(465,215)}
 	if stage_kind == "bunker_ammo":
-		targets = {"ammo_pits":Vector2(373,432), "ammo_exit":AMMO.EXIT}
+		targets = {"ammo_exit":AMMO.EXIT - Vector2(0, 10)}
+		if GameState.demo_pursuit.is_empty():
+			targets["ammo_pits"] = Vector2(373,432)
 		if GameState.has_demo_item("bunker_recording") and not GameState.opening_flags.ammo_chase_cleared and GameState.demo_pursuit.is_empty():
 			targets["ammo_restart"] = AMMO.RECORDING + Vector2(0, 13)
 	if stage_kind == "bunker_hall":
 		targets = {"bunker_bed":Vector2(190,232), "bunker_machine":Vector2(180,218), "bunker_graffiti":Vector2(320,180), "bunker_door":Vector2(550,178), "bunker_return":Vector2(320,300), "bunker_deep":Vector2(460,175)}
 	if stage_kind == "street":
 		targets["street_tiles"] = Vector2(330, 165)
+		targets["pork_chop_shop"] = Vector2(246, 156)
+		targets["tart_granny"] = Vector2(134, 177)
+		targets["tea_uncle"] = Vector2(520, 264)
 		if has_node("AhHaoStreet"):
 			targets["ahhao"] = AHHAO_STREET_FOOT
 	for prop_id in demo_prop_targets:
@@ -854,7 +1029,8 @@ func _process(_delta: float) -> void:
 		var delta: Vector2 = point - player.position
 		var alignment := player.look_dir.dot(delta.normalized()) if delta.length() > 0.1 else 1.0
 		var score := delta.length() + (1.0 - alignment) * 48.0
-		if delta.length() > 48.0 or score >= nearest or (delta.length() > 10 and alignment < -0.05):
+		var near_escape_gate: bool = id == "ammo_exit" and delta.length_squared() < 35.0 * 35.0
+		if delta.length() > 48.0 or score >= nearest or (delta.length() > 10 and alignment < -0.05 and not near_escape_gate):
 			continue
 		var ray := PhysicsRayQueryParameters2D.create(player.position, point + Vector2(0, 9), 1)
 		var hit := get_world_2d().direct_space_state.intersect_ray(ray)
@@ -864,20 +1040,45 @@ func _process(_delta: float) -> void:
 		nearest = score
 	if not selected_id.is_empty():
 		var names := {"jiamin":"和嘉敏说话", "entry":"进入唐楼", "meter":"检查电表箱", "stairs":"上楼", "exit":"返回街口", "door304":"调查 304 房门", "downstairs":"下楼", "fallen_phone":"拾起手机", "desk304":"查看书桌", "bed304":"查看铁床", "leave304":"回到走廊", "vent304":"检查检修盖", "wardrobe304":"躲进衣柜", "return_hatch":"返回 304", "notice":"查看检修牌", "steel_door":"检查铁门", "yard_exit":"穿过拱门", "yard_return":"返回检修通道", "public_phone":"查看公用电话", "city_stairs":"通往牌坊的石阶", "back_gate":"查看铁门", "crypt_desk":"查看资料桌", "crypt_niche":"查看石壁", "crypt_door":"查看侧门", "crypt_exit":"返回地面", "crypt_seam":"查看石像下的石缝", "hall_exit":"打开走廊尽头的门", "hall_back":"退回地宫入口", "archive_index":"查看采访索引", "archive_exit":"检查出口", "archive_back":"返回石廊", "hill_stele":"查看石碑", "hill_steps":"上山道", "hill_shrine":"查看香炉", "hill_back":"返回资料室", "bunker_toolbox":"检查旧维修箱", "bunker_oil":"拾取油壶", "shelter_door":"检查防空洞门", "shelter_board":"查看告示牌", "shelter_back":"返回山脚", "bunker_bed":"查看床铺", "bunker_door":"检查铁门", "bunker_return":"返回下行楼梯", "bunker_machine":"检查生锈的机器", "bunker_graffiti":"查看涂鸦", "ammo_pits":"查看坑位", "ammo_exit":"返回机房", "bunker_deep":"查看深处", "descent_return":"返回铁门", "descent_hall":"走向下层", "descent_pit":"查看深坑"}
+		names["ammo_exit"] = "试开铁门" if ammo_door_lock_timer > 0.0 else "返回机房"
+		names["archive_1961"] = "查看黑袍老伯的传闻摘记"
+		names["archive_1985"] = "查看旧案剪报"
+		names["archive_2011"] = "查看渗血石屎墙传闻"
 		names["street_tiles"] = "查看街牌和石仔路"
+		names["pork_chop_shop"] = "查看老饼店与猪扒包摊档"
+		names["tart_granny"] = "向陈阿婆打听"
+		names["tea_uncle"] = "向梁伯打听"
 		names["ahhao"] = "和阿豪说话"
-		names["review_tape"] = "复听录音" if not GameState.opening_flags.demo_case_closed else "查看调查结语"
+		names["review_tape"] = "复听录音" if not GameState.opening_flags.demo_case_closed else "查看调查结语 / 前往大关斜巷"
+		names["go_ch3_amparo"] = "前往大关斜巷（第三章）"
+		names["archive_lamp"] = "检查桌上绿罩台灯与 1961 勘测底片"
 		names["ammo_restart"] = "重新从这里带录音撤离"
 		names["spare_battery"] = "更换备用电池"
+		if stage_kind == "room304" and GameState.opening_flags.room_phone_answered and not GameState.opening_flags.wardrobe_tutorial_done:
+			names["leave304"] = "透过猫眼查看 304 房门"
 		var action: String = demo_prop_targets[selected_id][1] if demo_prop_targets.has(selected_id) else names.get(selected_id, "调查")
 		hud.prompt.text = "[ E ] " + action
 		var screen := get_viewport().get_canvas_transform() * player.global_position
 		hud.prompt.position = Vector2(clampf(screen.x - 40, 65, 420), clampf(screen.y + 13, 145, 289))
 
 func _physics_process(delta: float) -> void:
+	if stage_kind == "bunker_ammo" and ammo_door_lock_timer > 0.0:
+		var prev_sec := ceili(ammo_door_lock_timer)
+		ammo_door_lock_timer = maxf(0.0, ammo_door_lock_timer - delta)
+		if is_instance_valid(ammo_layout):
+			ammo_layout.set_exit_locked(ammo_door_lock_timer > 0.0, ammo_door_lock_timer)
+		var cur_sec := ceili(ammo_door_lock_timer)
+		if cur_sec != prev_sec and cur_sec > 0:
+			if cur_sec == 1:
+				AudioManager.play_at(self, "lock_mechanism", AMMO.EXIT, -8.0)
+		elif ammo_door_lock_timer == 0.0:
+			AudioManager.play_at(self, "gate_iron", AMMO.EXIT, -2.0)
+			hud.notify("咔嚓！南侧铁门轰然弹开！快冲回机房！")
 	if stage_kind == "bunker_descent" and is_instance_valid(pit_bones):
-		var ray := pit_bones.position - player.get_flashlight_origin()
-		var lit: bool = player.flashlight_on and player.lamp.enabled and player.position.distance_to(pit_bones.position) < 132.0 and player.look_dir.dot(ray.normalized()) > 0.78
+		var ray_lamp := pit_bones.position - player.get_flashlight_origin()
+		var ray_body := pit_bones.position - (player.global_position + Vector2(0, -28))
+		var aligned := player.look_dir.dot(ray_lamp.normalized()) > 0.72 or player.look_dir.dot(ray_body.normalized()) > 0.72
+		var lit: bool = player.flashlight_on and player.lamp.enabled and player.position.distance_to(pit_bones.position) < 138.0 and aligned
 		pit_bones.modulate.a = move_toward(pit_bones.modulate.a, 1.0 if lit else 0.0, delta * 3.7)
 		if lit and pit_bones.modulate.a > 0.8 and not GameState.opening_flags.pit_bones_seen:
 			GameState.opening_flags.pit_bones_seen = true
@@ -940,17 +1141,31 @@ func interact_target(id: String) -> void:
 		return
 	match id:
 		"ahhao":
-			show_text("阿豪", "姐夫，等我调好这盏补光灯，待会进旧唐楼拍片就不用摸黑找开关了。听说这楼地底真连着大三巴墓室！", [], Callable(), "黄梓豪")
+			_show_street_local("street_ahhao_met", "阿豪", "黄梓豪", "姐夫，我先把补光灯调好。进楼以后，楼道里没灯也能拍。", "灯调好了，我到门口等你们。")
 		"street_tiles":
+			GameState.unlock_macau_guide("azulejo_street")
 			show_text("葡式街牌与土地神龛", "蓝白瓷砖写着「福荣里 Beco da Felicidade」，脚下是黑白波浪石仔路，墙角土地财神龛还燃着三支红香。顺着前面石阶往上就是大三巴牌坊。")
+		"pork_chop_shop":
+			GameState.unlock_macau_guide("egg_tart")
+			show_text("大三巴街 · 老饼店与茶餐厅", "这家老店每天炭烧杏仁饼，隔壁茶餐厅的猪扒包刚炸好就夹进脆猪仔包里。大文、阿豪，先垫垫肚子，待会儿进福荣里才有力气！", [], func():
+				show_text("大三巴街 · 茶餐厅门口", "大文笑着替嘉敏拆开冻柠茶吸管纸套，瞥见她左手尾指那枚细银尾戒，食指指节还贴着一小块米色创可贴：\n「手背前两天划的小口子还贴着创可贴呢，一会儿进旧楼可别乱碰生锈铁门。先拍完照、拿好葡挞再进楼。」", [], Callable(), "陈大文")
+			, "黄嘉敏")
+		"tart_granny":
+			GameState.unlock_macau_guide("egg_tart")
+			_show_street_local("tart_granny_met", "葡挞档", "陈阿婆", "刚出炉，拿稳，挞皮一碰就碎。你们去福荣里？街坊说，那栋楼有个穿黑袍的老人，见人就问大三巴怎么走。奇就奇在，楼梯响了一夜，他走过去却一点脚步声都没有。", "要趁热吃。凉了回炉烘一下，挞皮才脆。", "granny_chen_01", "granny_chen_02")
+		"tea_uncle":
+			GameState.unlock_macau_guide("herbal_tea")
+			_show_street_local("tea_uncle_met", "凉茶档", "梁伯", "廿四味有点苦，慢慢喝。要上松山就趁天没黑。我小时候，家里人常说，下山时有人从背后叫你，先走到有灯的地方再回头。", "走累了就歇会儿。水在茶壶里，自己倒。", "uncle_liang_01", "uncle_liang_02")
 		"jiamin":
 			if not GameState.opening_flags.photo_taken:
 				show_line("photo_invite")
 			elif not GameState.opening_flags.pastry_shared:
 				set_girl_pose(1)
 				show_line("pastry_offer", [{"text":"接过葡挞", "callback": accept_pastry}, {"text":"等一下", "callback":close_dialog}])
-			else:
+			elif not GameState.opening_flags.knock_agreed:
 				show_line("knock", [], agree_knock)
+			else:
+				hud.notify("和嘉敏约好了暗号。去福荣里门口会合。")
 		"entry":
 			if not GameState.opening_flags.photo_taken:
 				show_text("出发前", "嘉敏还在等你替她拍照。按 C 举起手机，退后一些，把她和建筑一起拍进去。")
@@ -958,8 +1173,10 @@ func interact_target(id: String) -> void:
 				show_text("出发前", "嘉敏向你举了举纸袋：葡挞还热，先过来拿。")
 			elif not GameState.opening_flags.knock_agreed:
 				show_line("knock", [], agree_knock)
-			else:
+			elif not GameState.opening_flags.entered_foyer:
 				show_line("enter", [], enter_foyer)
+			else:
+				enter_foyer()
 		"meter":
 			if GameState.opening_flags.floor3_power:
 				show_text("三楼支路已恢复", "楼梯口透出暖光。嘉敏还在三零四等你。", [{"text":"查看线路", "callback":show_power_puzzle},{"text":"返回", "callback":close_dialog}])
@@ -984,26 +1201,33 @@ func interact_target(id: String) -> void:
 			pickup_phone()
 		"desk304":
 			if not GameState.opening_flags.room_phone_answered:
-				show_text("书桌", "旧电话还在响，旁边放着一张泛黄的照片。", [{"text":"接听电话", "callback":answer_room_phone},{"text":"查看旧照", "callback":show_old_photo},{"text":"暂时离开", "callback":close_dialog}])
+				show_text("书桌与嘉敏手机", "手里刚拾起的嘉敏手机屏幕亮着「求救未接通 / 回拨来电」，书桌上还摊着一张泛黄的福荣里旧照。", [{"text":"接听电话（回听嘉敏手机求救未接通录音）", "callback":answer_room_phone},{"text":"查看旧照", "callback":show_old_photo},{"text":"暂时离开", "callback":close_dialog}])
 			else:
 				show_old_photo()
 		"bed304":
 			if GameState.opening_flags.room_bed_moved:
 				show_text("铁床", "床已经移开，墙边露出检修位置。")
 			elif not GameState.opening_flags.room_phone_answered:
-				show_text("铁床", "床脚有新拖痕。书桌上的旧电话正在响，先去看看。")
+				show_text("铁床", "床脚有新拖痕。手机上那通求救回拨还在响，先去书桌边接听查看。")
 			elif not GameState.opening_flags.wardrobe_tutorial_done:
-				show_text("铁床", "门外脚步还在。先从左边衣柜避一避。")
+				show_text("铁床", "砰砰的砸门声就在房门外！千万别去开门，立刻冲进左侧衣柜藏身！")
 			elif not GameState.opening_flags.old_photo_seen:
 				show_text("铁床", "花砖上的拖痕从床脚一路通到右后墙。先在书桌前展开福荣里旧合照。")
 			else:
 				show_text("旧照里的门在床后", "窗格和四瓣花砖与旧照相同。照片里铁床靠前，墙上有木门。现在拖痕停在墙脚。\n\n从床尾右侧把铁床推开，看看照片上的百叶还在不在。", [{"text":"推开铁床", "callback":move_room_bed},{"text":"重看旧合照", "callback":show_old_photo},{"text":"返回", "callback":close_dialog}])
 		"leave304":
 			if not GameState.opening_flags.room_phone_answered:
+				AudioManager.play_world_effect("lock_mechanism")
 				if GameState.opening_flags.jiamin_phone_found:
-					show_text("房门闩牢", "阿豪在门外遇害，门外隐约有刮擦游荡声，门栓已重重锁死。书桌上的旧座机正在尖响，先去书桌查清线索。")
+					show_text("房门闩牢", "阿豪在门外遇害，门外隐约有刮擦游荡声，门栓已重重锁死。嘉敏手机上的求救回拨还在响，先去书桌边查清线索。")
 				else:
-					show_text("房门闩牢", "门外怪物正在过道徘徊，门栓已死。嘉敏的手机就在门边地上，书桌上的座机也正在尖响，先在房内排查线索。")
+					show_text("房门闩牢", "门外怪物正在过道徘徊，门栓已死。嘉敏的手机就在门边地上，先拾起手机再去书桌边排查线索。")
+			elif not GameState.opening_flags.wardrobe_tutorial_done:
+				AudioManager.play_world_effect("scare_door_bang")
+				show_text("304 房门 · 猫眼", "门外传来低沉的抓挠与急促敲门声，老式黄铜猫眼透出一丝冷光。", [
+					{"text":"凑近猫眼往外看", "callback":_show_room304_peephole_scare},
+					{"text":"退开，先冲进左侧衣柜", "callback":close_dialog}
+				])
 			else:
 				change_opening_room("ch0_corridor", "from_room304")
 		"wardrobe304":
@@ -1020,7 +1244,8 @@ func interact_target(id: String) -> void:
 				change_opening_room("ch0_foyer", "from_corridor")
 		"exit":
 			if not GameState.opening_flags.floor3_power:
-				show_text("离开唐楼？", "嘉敏还在三楼等我，我先把电表修好恢复供电，不能丢下她。")
+				var msg := "电表箱还缺街边墙脚的【绝缘跨接片】，先出门回福荣里街口找找？" if not GameState.has_demo_item("insulated_bridge") else "嘉敏还在三楼等我，修完电表就能上楼。确定先回街口看看？"
+				show_text("返回福荣里街口", msg, [{"text":"出门回街口", "callback":return_street}, {"text":"留在一楼修电表", "callback":close_dialog}])
 			else:
 				return_street()
 		"return_hatch":
@@ -1042,13 +1267,17 @@ func interact_target(id: String) -> void:
 		"public_phone":
 			call_public_phone()
 		"city_stairs":
-			show_text("牌坊方向", "石阶上挂着嘉敏衣服的碎布。她往牌坊去了。", [{"text":"前往牌坊", "callback":go_to_crypt},{"text":"返回", "callback":close_dialog}])
+			show_text("牌坊方向", "石阶旁滴落着几处还未干透的暗红血迹——是嘉敏逃走时留下的痕迹，她往牌坊去了。", [{"text":"前往牌坊", "callback":go_to_crypt},{"text":"返回", "callback":close_dialog}])
 		"back_gate":
-			show_text("铁门", "刚才穿出的铁门已经关上，从这里打不开。")
+			AudioManager.play_world_effect("gate_chain")
+			show_text("铁门", "刚才穿出的铁门已经扣死，锁舌卡住，从这一侧拉不开。")
 		"crypt_desk":
 			show_crypt_desk()
 		"crypt_niche":
-			show_crypt_evidence("doodle")
+			if GameState.opening_flags.crypt_photo_seen and GameState.opening_flags.crypt_plan_seen and GameState.opening_flags.crypt_doodle_seen and not GameState.opening_flags.crypt_aligned:
+				show_crypt_comparison()
+			else:
+				show_crypt_evidence("doodle")
 		"crypt_door":
 			if GameState.opening_flags.crypt_door_open:
 				change_opening_room("ch1_crypt_hall", "from_entry")
@@ -1057,6 +1286,7 @@ func interact_target(id: String) -> void:
 			elif GameState.opening_flags.crypt_aligned:
 				show_text("右侧维护门", "门框下沿有一枚后加的金属扣，正卡在这扇门的下插销上。", [{"text":"用钳松开门框卡扣", "callback":remove_crypt_clip},{"text":"返回", "callback":close_dialog}])
 			else:
+				AudioManager.play_world_effect("lock_mechanism")
 				show_text("右侧维护门", "鞋印在这里停了。门框底下有个新装的扣。用资料桌的旧图看看原来的门是怎么开的。")
 		"crypt_exit":
 			change_opening_room("ch0_exit_lane", "from_crypt")
@@ -1106,6 +1336,10 @@ func interact_target(id: String) -> void:
 			_inspect_pit()
 		"review_tape":
 			_show_tape_board()
+		"go_ch3_amparo":
+			begin_ch3_archive()
+		"archive_lamp":
+			show_text("档案台灯与旧底片", "老式绿色玻璃台灯下压着一卷 1961 年圣保禄地宫勘测黑白底片，背面印着工务局红章与三道标尺线，旁边还留着嘉敏翻查时的咖啡杯印。")
 		"bunker_bed":
 			show_text("流浪汉旧地铺", "发霉的破床垫旁散着空易拉罐、碎玻璃和发黄水渍，角落掉着一只八十年代澳门「同善堂」旧铁盒。走路得小心别踢响罐子。")
 		"bunker_machine":
@@ -1114,16 +1348,32 @@ func interact_target(id: String) -> void:
 			GameState.take_demo_item("stair_rubbing")
 			checkpoint()
 			show_text("机房墙面拓记", "墙上白线画到 89，旁边画着缺角和一枚墙钉。下边的脚印朝来路，人的脸却朝向深处。\n\n「再见白记，照住前面，沿自己脚印倒返。」拓记已收进背包。", [], Callable(), "陈大文", DemoItems.texture("stair_rubbing"))
+		"archive_1961":
+			show_text("黑袍老伯 · 传闻摘记", "剪报旁夹着嘉敏的街访笔记。有人说后山动过工，有人说黑袍老人会在封门后招手。嘉敏只给后一句画了圈，旁边写着：『讲过这话的人，都没进去过。』")
+		"archive_1985":
+			show_text("1985 年旧案剪报", "嘉敏把关于八仙饭店案的报道和坊间传言分开收好。未经证实的说法都划了线。\n\n另一页是她自己的取材路线：『大关斜巷 → 33 路 → 黑沙海滩』。")
+		"archive_2011":
+			show_text("渗血石屎墙 · 民间传闻", "街坊各有一套说法，只有『墙补过以后，夜里还听得见响动』这一句反复出现。纸背有嘉敏画的取材草图，把旧暗渠和虚构的封墙夹层连在了一起。")
 		"bunker_door":
 			if not GameState.demo_pursuit.is_empty():
-				hud.notify("脚步堵住了子弹房口。往小拱门撤。")
+				AudioManager.play_world_effect("gate_chain")
+				hud.notify("脚步堵住了子弹房口。快往右侧拱门下到 99 级石阶！")
 			elif not GameState.has_demo_item("stair_rubbing"):
-				show_text("子弹房入口", "地籍索引显示这里是旧弹药库，嘉敏留下的粉笔箭头指向右边房里。进门前，先看看机房正前方涂鸦里和 89 级有关的白记。")
+				AudioManager.play_world_effect("lock_mechanism")
+				show_text("子弹房入口", "地籍索引显示这里是旧弹药库，门槛上留着嘉敏匆忙踩过的湿鞋印——她当年为寻找防空洞通往大关斜巷的战时通风出口，曾躲进过这里。进门前，先看看机房正前方墙面和 89 级有关的白记。")
 			else:
 				change_opening_room("ch2_bunker_ammo", "from_hall")
 		"ammo_exit":
-			if GameState.demo_pursuit == "ammo":
+			if ammo_door_lock_timer > 0.0:
+				AudioManager.play_at(self, "iron_slam", AMMO.EXIT, -2.0)
+				if is_instance_valid(ammo_layout):
+					ammo_layout.shake_exit_gate()
+				hud.notify("铁门卡死了！绕开三道红衣影再坚持 %d 秒，门锁快弹开了！" % ceili(ammo_door_lock_timer))
+			elif GameState.demo_pursuit == "ammo":
 				_pursuit_room_change("ch2_bunker_hall", "from_ammo", "hall")
+			elif GameState.has_demo_item("bunker_recording") and not GameState.opening_flags.ammo_chase_cleared:
+				AudioManager.play_world_effect("gate_chain")
+				show_text("南门", "门外有三道脚步。先回录音机落下的位置，从那里的横道绕开它们。")
 			else:
 				change_opening_room("ch2_bunker_hall", "from_ammo")
 		"ammo_pits":
@@ -1132,19 +1382,15 @@ func interact_target(id: String) -> void:
 		"ammo_restart":
 			start_red_passage()
 		"bunker_deep":
+			# Guard Shelter Room removed per user design: bunker_deep leads DIRECTLY into the 99 Haunted Stairs!
 			if GameState.demo_pursuit == "hall":
-				if GameState.opening_flags.hill_steps_completed:
-					_pursuit_room_change("ch2_hill_steps", "from_hall", "steps")
-				elif GameState.request_room_change("ch2_bunker_shaft", "from_hall"):
-					GameState.demo_pursuit = ""
-				else:
-					hud.notify("竖井入口暂时无法打开，请稍后重试。")
+				_pursuit_room_change("ch2_hill_steps", "from_hall", "steps")
 			elif GameState.has_demo_item("bunker_recording") and not GameState.opening_flags.hill_steps_completed:
-				change_opening_room("ch2_bunker_shaft", "from_hall")
+				change_opening_room("ch2_hill_steps", "from_hall")
 			elif GameState.opening_flags.ammo_chase_cleared:
 				hud.notify("该带录音出洞了。机房南侧能回到铁门。")
 			else:
-				show_text("内侧拱门", "下面就是地道深处的梯道。先从右侧子弹房捡起嘉敏留下的录音机。")
+				show_text("内侧拱门", "门后是深层石阶。嘉敏把录音机落在右边的子弹房，先去找回来。")
 		"bunker_return":
 			if GameState.demo_pursuit == "hall":
 				hud.notify("来路响起三串脚步。往右侧小拱门去。")
@@ -1167,9 +1413,11 @@ func start_camera() -> void:
 	camera_view.center = Vector2(300, 190)
 	camera_view.show()
 	camera_view.queue_redraw()
+	if is_instance_valid(photo_marker):
+		photo_marker.hide()
 	hud.resources.hide()
 	hud.title_mark.hide()
-	hud.objective.text = "移动鼠标调整取景 · 左键拍照 · Esc 放下手机"
+	hud.objective.text = ""
 
 func stop_camera() -> void:
 	camera_capture_generation += 1
@@ -1178,6 +1426,8 @@ func stop_camera() -> void:
 	hud.root.show()
 	camera_view.hide()
 	camera_pose.hide()
+	if is_instance_valid(photo_marker):
+		photo_marker.visible = not GameState.opening_flags.photo_taken
 	player.sprite.show()
 	player.controls_enabled = true
 	player.clear_motion()
@@ -1221,6 +1471,7 @@ func take_photo() -> void:
 		GameState.opening_photo = ImageTexture.create_from_image(fixture)
 		GameState.opening_photo_file=""
 	GameState.opening_flags.photo_taken = true
+	GameState.unlock_macau_guide("st_pauls")
 	if is_instance_valid(photo_marker):
 		photo_marker.queue_free()
 		photo_marker = null
@@ -1231,13 +1482,23 @@ func take_photo() -> void:
 	update_objective()
 
 func accept_pastry() -> void:
+	close_dialog(false)
+	work_in_progress = true
+	player.controls_enabled = false
 	GameState.opening_flags.pastry_shared = true
+	GameState.unlock_macau_guide("egg_tart")
 	checkpoint()
 	set_girl_pose(0)
 	pastry_pose.position = player.position
 	pastry_pose.z_index = int(player.position.y)
 	pastry_pose.show()
 	player.sprite.hide()
+	AudioManager.play_world_effect("archive_ticket_pickup")
+	update_objective()
+	await get_tree().create_timer(0.38, false).timeout
+	if not is_inside_tree():
+		return
+	work_in_progress = false
 	show_line("pastry_reply", [], finish_pastry)
 	update_objective()
 
@@ -1275,8 +1536,32 @@ func change_opening_room(room_id: String, entry_id: String) -> void:
 		hud.notify("暂时无法进入，请重试。")
 
 func go_to_crypt() -> void:
+	if work_in_progress:
+		return
 	close_dialog(false)
-	change_opening_room("ch1_crypt_entry", "from_lane")
+	work_in_progress = true
+	player.controls_enabled = false
+	player.clear_motion()
+	var card := ChapterLandmarkTransition.play(
+		self,
+		"第一章 · 牌坊地宫",
+		"穿出福荣里后巷 → 绕行大三巴牌坊石阶暗门",
+		"沿嘉敏留下的脚印与记号，潜入牌坊后侧封闭的地下墓室……",
+		"冷风从石阶底部的铁栅缝隙灌出，手电光柱切开积灰的石室……",
+		"entrance_door",
+		"res://assets/ui/map_landmarks/stop_2_stpaul_crypt.png"
+	)
+	await card.completed
+	if not is_inside_tree():
+		return
+	if GameState.request_room_change("ch1_crypt_entry", "from_lane"):
+		checkpoint()
+	else:
+		if is_instance_valid(card):
+			card.dismiss()
+		work_in_progress = false
+		player.controls_enabled = true
+		hud.notify("暂时无法进入，请重试。")
 
 func show_old_photo() -> void:
 	var first_look: bool = not GameState.opening_flags.old_photo_seen
@@ -1386,7 +1671,16 @@ func show_phone_notes() -> void:
 	get_tree().paused = true
 
 func show_bag() -> void:
-	open_demo_widget(preload("res://ui/demo_bag.gd").new())
+	open_demo_widget(_make_bag())
+
+func _make_bag() -> Control:
+	var bag := preload("res://ui/demo_bag.gd").new()
+	bag.recording_verified.connect(_on_bunker_recording_verified)
+	bag.phone_open_requested.connect(func():
+		close_dialog(false)
+		show_phone_notes()
+	)
+	return bag
 
 func show_travel_map() -> void:
 	var map := preload("res://ui/demo_travel_map.gd").new()
@@ -1402,12 +1696,16 @@ func open_demo_widget(widget: Control) -> void:
 
 func show_crypt_desk() -> void:
 	if GameState.opening_flags.crypt_photo_seen and GameState.opening_flags.crypt_plan_seen and GameState.opening_flags.crypt_doodle_seen:
-		show_text("资料桌", "图纸显示这里保存的测绘图比现场早。对照墙上的标记，找出改建动过哪里。", [{"text":"摆开三份证据", "callback":show_crypt_comparison}, {"text":"访客素描", "callback":show_crypt_witness},{"text":"返回", "callback":close_dialog}])
+		show_text("资料桌 · 三份证据已齐备", "已集齐地宫三份关键证据（①右壁龛旁《巡查旧照》、②左壁龛《孩童涂鸦》、③资料桌《测绘描图》）。现在将三份证据摆在三印石盘上方，按三份证据提示的标记依次旋转三枚石印即可解锁暗门：", [{"text":"摆开三份证据（开启三印石盘机关）", "callback":show_crypt_comparison}, {"text":"查看测绘描图", "callback":show_crypt_evidence.bind("plan")}, {"text":"访客素描", "callback":show_crypt_witness}, {"text":"返回", "callback":close_dialog}])
 	else:
 		show_crypt_evidence_menu()
 
 func show_crypt_evidence_menu() -> void:
-	show_text("资料桌", "测绘描图留在这里。巡查照片搁在右壁龛旁的石台上，左壁龛脚边还压着一张孩子的画。", [{"text":"查看测绘描图", "callback":show_crypt_evidence.bind("plan")},{"text":"查看访客素描", "callback":show_crypt_witness},{"text":"返回现场", "callback":close_dialog}])
+	var c1 := "✓ 已收集" if GameState.opening_flags.crypt_plan_seen else "○ 待查看（就在本资料桌上）"
+	var c2 := "✓ 已收集" if GameState.opening_flags.crypt_photo_seen else "○ 待拾取（在右侧壁龛旁石台上）"
+	var c3 := "✓ 已收集" if GameState.opening_flags.crypt_doodle_seen else "○ 待查看（按 E 调查上方中央/左侧石壁）"
+	var body := "要解开石壁上的三印机关锁，需先集齐室内三份证据：\n· 证据①《测绘描图》：%s\n· 证据②《巡查旧照》：%s\n· 证据③《孩童涂鸦》：%s" % [c1, c2, c3]
+	show_text("资料桌 · 收集三份证据", body, [{"text":"查看测绘描图", "callback":show_crypt_evidence.bind("plan")},{"text":"查看访客素描", "callback":show_crypt_witness},{"text":"返回现场", "callback":close_dialog}])
 
 func show_crypt_witness() -> void:
 	show_text("访客素描", "")
@@ -1446,12 +1744,12 @@ func show_crypt_evidence(kind: String) -> void:
 func show_crypt_comparison() -> void:
 	if not (GameState.opening_flags.crypt_photo_seen and GameState.opening_flags.crypt_plan_seen and GameState.opening_flags.crypt_doodle_seen):
 		return
-	var board = preload("res://ui/crypt_survey_board.gd").new()
+	var board = preload("res://ui/crypt_niche_puzzle_v6.gd").new()
 	board.name = "CryptComparison"
 	board.aligned.connect(func():
 		GameState.opening_flags.crypt_aligned = true
 		checkpoint()
-		show_text("墙面改建记录", "石像封住了中间壁龛。粉笔箭头转向右侧维护门，鞋印也往那里走。")
+		show_text("石龛机括松动", "三枚石印全部扣合！石像背后的暗门栓发出沉重响动，现在可以去右侧维护门拆除卡扣了。")
 	)
 	open_demo_widget(board)
 
@@ -1539,7 +1837,7 @@ func start_priest_encounter() -> void:
 	priest.active = false
 	priest.caught.connect(priest_caught)
 	priest.freeze_changed.connect(func(is_frozen: bool):
-		hud.notify("黑衣人被光照住，停下了。" if is_frozen else "光线移开，黑衣人再次靠近。")
+		hud.notify("手电照出黑袍下的森森白骨，它惨叫僵住了！趁机绕开或按 [ R ] 手机强闪！" if is_frozen else "光线移开，白骨黑袍人再次逼近！")
 	)
 	add_child(priest)
 	var timer := Timer.new()
@@ -1560,7 +1858,7 @@ func start_priest_encounter() -> void:
 func priest_caught() -> void:
 	AudioManager.stop_chase_music()
 	priest_encounter_active = false
-	_capture_cut("res://assets/characters/priest_lunge_026.png", "被黑衣人追上", "回到石廊入口。把光照在他身上可以止住脚步，再从一侧绕开。", retry_priest)
+	_capture_cut("res://assets/characters/priest_white_eyes_v6.png", "被黑衣人追上", "回到石廊入口。把光照在他身上可以止住脚步，再从一侧绕开。", retry_priest)
 
 func _capture_cut(art_path: String, title: String, note: String, retry: Callable) -> void:
 	capture_locked = true
@@ -1641,29 +1939,46 @@ func copy_interview_index() -> void:
 	image.size = Vector2(618,338)
 	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.panel_content.add_child(image)
-	hud.label("采访索引 · 松山", Vector2(220,115), Vector2(220,24), 17, Color("3b2a1b"), hud.panel_content)
-	hud.label("松山地籍旧口述（传闻）\n一家三口从没上锁的门进入后失踪；\n后来有人在子弹房见三道红影经过门口。\n夜里数楼梯，八十多级会变成九十九级。\n入口下方右侧有一处深坑。", Vector2(160,145), Vector2(320,135), 12, Color("3b2a1b"), hud.panel_content)
-	hud.label("已拍照留存 · Esc 返回", Vector2(210,308), Vector2(250,18), 12, Color("3b2a1b"), hud.panel_content)
+	var hand_font := UiFont.song()
+	var title_lbl: Label = hud.label("采访手记 · 松山防空洞口述", Vector2(188,108), Vector2(260,26), 16, Color("2e1d12"), hud.panel_content)
+	title_lbl.add_theme_font_override("font", hand_font)
+	title_lbl.rotation = -0.015
+	var body_lbl: Label = hud.label("松山地籍旧口述（手写抄录）\n  一家三口从没上锁的铁门误入后音讯全无；\n  后来有人在子弹房见三道红影贴墙掠过。\n  夜里数石阶，八十多级会多出到九十九级。\n  东侧深处还有一口守井巡山人坠落的竖井。", Vector2(148,142), Vector2(340,148), 12, Color("312116"), hud.panel_content)
+	body_lbl.add_theme_font_override("font", hand_font)
+	body_lbl.add_theme_constant_override("line_spacing", 4)
+	body_lbl.rotation = -0.01
+	var foot_lbl: Label = hud.label("—— 1998 采访底稿 · 已拍照留存 · Esc 返回", Vector2(174,306), Vector2(300,18), 11, Color("4a3524"), hud.panel_content)
+	foot_lbl.add_theme_font_override("font", hand_font)
 	update_objective()
 
 func open_archive_exit() -> void:
+	if work_in_progress:
+		return
+	work_in_progress = true
 	room_lit_layer.hide()
 	room_dark_layer.show()
 	player.controls_enabled = false
 	player.clear_motion()
-	AudioManager.play_world_effect("entrance_door")
-	var timer := Timer.new()
-	timer.wait_time = 0.7
-	timer.one_shot = true
-	add_child(timer)
-	timer.start()
-	await timer.timeout
+	var card := ChapterLandmarkTransition.play(
+		self,
+		"第二章 · 松山断香",
+		"离开大三巴地宫 → 经荷兰园大马路、东望洋斜巷夜登松山",
+		"嘉敏留下的去向指向东望洋山腹的旧防空洞。夜雨渐密，山道石阶湿冷发暗……",
+		"山脚铁闸前垂着锈锁链，风里飘来半截断香的焦烟味……",
+		"gate_iron",
+		"res://assets/ui/map_landmarks/stop_3_guia_bunker.png"
+	)
+	await card.completed
 	if not is_inside_tree():
-		if is_instance_valid(timer):
-			timer.queue_free()
 		return
-	timer.queue_free()
-	change_opening_room("ch2_hill_base", "from_archive")
+	if GameState.request_room_change("ch2_hill_base", "from_archive"):
+		checkpoint()
+	else:
+		if is_instance_valid(card):
+			card.dismiss()
+		work_in_progress = false
+		player.controls_enabled = true
+		hud.notify("暂时无法进入，请重试。")
 
 func leave_archive_for_hill() -> void:
 	close_dialog(false)
@@ -1739,29 +2054,70 @@ func _show_tape_board() -> void:
 	if GameState.opening_flags.demo_case_closed:
 		_show_demo_conclusion()
 		return
-	if not GameState.opening_flags.ammo_chase_cleared or not GameState.has_demo_item("bunker_recording"):
+	if not GameState.has_demo_item("bunker_recording"):
 		return
 	var board = preload("res://ui/bunker_tape_board.gd").new()
-	board.verified.connect(func():
-		GameState.opening_flags.demo_case_closed = true
-		checkpoint()
-		_show_demo_conclusion()
-	)
+	board.verified.connect(_on_bunker_recording_verified)
 	open_demo_widget(board)
 
+func _can_conclude_bunker_recording() -> bool:
+	return stage_kind == "hill_shelter" and GameState.has_demo_item("bunker_recording") and (
+		GameState.opening_flags.ammo_chase_cleared or GameState.opening_flags.hill_steps_completed
+	)
+
+func _on_bunker_recording_verified() -> void:
+	if GameState.current_chapter_id != "ch2_guia_tunnel":
+		return
+	GameState.opening_flags.bunker_recording_verified = true
+	if _can_conclude_bunker_recording():
+		if not GameState.opening_flags.demo_case_closed:
+			GameState.opening_flags.ammo_chase_cleared = true
+			GameState.opening_flags.demo_case_closed = true
+			checkpoint()
+		update_objective()
+		_show_demo_conclusion()
+	else:
+		close_dialog(false)
+		var escaped: bool = GameState.opening_flags.ammo_chase_cleared
+		hud.notify("已查清她的去向。沿来路出防空洞。" if escaped else "已查清她的去向。先经九十九级石阶脱险。")
+
 func _show_demo_conclusion() -> void:
-	show_text("松山 · 洞外", "录音停了，她最后还在喊阿豪……\n竖井便签指向大关斜巷——就是手札里写过二战饥荒肉铺与长楼猪仔馆的那条老巷，我得马上赶过去！", [
-		{"text":"查看更新的攻略", "callback":show_travel_map},
+	show_text("松山 · 洞外", "她最后还在喊阿豪……\n\n录音里说要从排风竖井去大关斜巷。我先去旧肉铺看看她有没有留下什么。", [
+		{"text":"查看更新的路线图", "callback":show_travel_map},
 		{"text":"前往大关斜巷", "callback":begin_ch3_archive},
 		{"text":"回到标题", "callback":_return_to_title}
 	])
 
 func begin_ch3_archive() -> void:
 	close_dialog(false)
-	if GameState.opening_flags.demo_case_closed and GameState.request_room_change("ch3_amparo_archive", "from_bunker"):
+	if not GameState.opening_flags.demo_case_closed:
+		show_text("大关斜巷", "还没有核对嘉敏录音里提到的避险路线。先读清留言，再往大关斜巷。")
+		return
+	if work_in_progress:
+		return
+	work_in_progress = true
+	player.controls_enabled = false
+	player.clear_motion()
+	var card := ChapterLandmarkTransition.play(
+		self,
+		"第三章 · 骨肉长楼",
+		"下松山经水坑尾街 → 穿关前正街步入大关斜巷",
+		"录音机里嘉敏最后提到的大关斜巷就在旧城区深处，青砖巷弄飘出老收音机的粤剧唱腔……",
+		"半掩卷闸的旧肉铺透出昏黄灯光，门缝渗出诡异的血腥气……",
+		"entrance_door",
+		"res://assets/ui/map_landmarks/stop_4_amparo_alley.png"
+	)
+	await card.completed
+	if not is_inside_tree():
+		return
+	if GameState.request_room_change("ch3_amparo_archive", "from_bunker"):
 		GameState.save_transition_checkpoint()
 	else:
-		show_text("大关斜巷", "还没有核对嘉敏录音里提到的避险路线。先读清留言，再往大关斜巷。")
+		if is_instance_valid(card):
+			card.dismiss()
+		work_in_progress = false
+		player.controls_enabled = true
+		hud.notify("大关斜巷暂时无法载入。请在洞口南侧路口重试。")
 
 func _return_to_title() -> void:
 	close_dialog(false)
@@ -1808,6 +2164,56 @@ func _open_service_exit() -> void:
 func wrong_bed_choice() -> void:
 	show_text("再看一看", "褪色不会改变床脚的位置。结合拖痕和旧照片，再检查一次。")
 
+func _show_room304_peephole_scare() -> void:
+	close_dialog(false)
+	work_in_progress = true
+	player.controls_enabled = false
+	player.clear_motion()
+	var layer := CanvasLayer.new()
+	layer.name = "PeepholeScareLayer"
+	layer.layer = 50
+	add_child(layer)
+	var bg := ColorRect.new()
+	bg.color = Color(0.01, 0.02, 0.015, 0.0)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(bg)
+	var cg := TextureRect.new()
+	cg.texture = preload("res://assets/ui/room304_peephole_eye_v6.png")
+	cg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	cg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	cg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cg.pivot_offset = Vector2(320, 180)
+	cg.modulate.a = 0.0
+	cg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(cg)
+	AudioManager.play_world_effect("peephole_grudge_croak")
+	var intro := create_tween()
+	intro.tween_property(bg, "color:a", 0.96, 0.22)
+	await intro.finished
+	if not is_inside_tree():
+		return
+	AudioManager.play_world_effect("jumpscare_wraith")
+	AudioManager.play_world_effect("scare_door_bang")
+	cg.modulate.a = 1.0
+	var lunge_tw := create_tween()
+	var target_scale := Vector2(1.04, 1.04) if GameState.reduced_flash else Vector2(1.12, 1.12)
+	lunge_tw.tween_property(cg, "scale", target_scale, 0.16).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+	if not GameState.reduced_flash:
+		lunge_tw.tween_property(cg, "position", Vector2(5, -4), 0.05)
+		lunge_tw.tween_property(cg, "position", Vector2(-5, 3), 0.05)
+		lunge_tw.tween_property(cg, "position", Vector2.ZERO, 0.06)
+	lunge_tw.tween_interval(0.95)
+	lunge_tw.tween_property(cg, "modulate:a", 0.0, 0.22)
+	lunge_tw.parallel().tween_property(bg, "color:a", 0.0, 0.22)
+	await lunge_tw.finished
+	if is_instance_valid(layer):
+		layer.queue_free()
+	if not is_inside_tree():
+		return
+	work_in_progress = false
+	show_text("千万别开门！", "一只布满血丝的惨白眼睛正死死贴在猫眼外盯着你！！\n绝不能现在开门出去，快冲进左侧衣柜躲起来！")
+
 func answer_room_phone() -> void:
 	if GameState.opening_flags.room_phone_answered or work_in_progress:
 		return
@@ -1818,8 +2224,9 @@ func answer_room_phone() -> void:
 	AudioManager.stop_all()
 	GameState.opening_flags.room_phone_answered = true
 	checkpoint()
-	AudioManager.play_world_effect("hall_wail")
-	hud.notify("听筒里：两下，一下……压低的哭喊，没有回答。")
+	AudioManager.play_world_effect("jiamin_phone_scream")
+	AudioManager.play_voice("jiamin_304_scared", -1.0)
+	hud.notify("嘉敏手机的求救回拨里传来两下、一下的急促敲击与压低哭喊，随即断线……")
 	await get_tree().create_timer(0.82, false).timeout
 	if not is_inside_tree():
 		return
@@ -1833,13 +2240,15 @@ func answer_room_phone() -> void:
 	if not is_inside_tree():
 		return
 	AudioManager.play_at(self, "door_approach", Vector2(320, 304))
+	AudioManager.play_at(self, "scare_door_bang", Vector2(320, 304))
 	await get_tree().create_timer(0.72, false).timeout
 	if not is_inside_tree():
 		return
+	AudioManager.play_at(self, "photo_knock", Vector2(320, 304))
 	AudioManager.play_at(self, "hall_wail", Vector2(341, 304))
 	work_in_progress = false
 	player.controls_enabled = true
-	hud.notify("门外的脚步停了。左边有一只衣柜。")
+	hud.notify("砰！砰！砰！鬼就在 304 房门外猛敲门——千万别开门出去，快冲进左侧衣柜躲起来！")
 	update_objective()
 
 func enter_room_wardrobe() -> void:
@@ -1883,18 +2292,35 @@ func exit_room_wardrobe() -> void:
 	if not GameState.opening_flags.wet_tag_left:
 		GameState.opening_flags.wet_tag_left = true
 		checkpoint()
+		# Show the fleeing dark shadow figure visibly slipping out the 304 doorway and dropping the wet tag outside!
+		var door_retreat := Sprite2D.new()
+		door_retreat.name = "RetreatingDoorShadow"
+		var stalker_tex: Texture2D = preload("res://assets/characters/wardrobe_stalker_v5.png")
+		var ret_atlas := AtlasTexture.new()
+		ret_atlas.atlas = stalker_tex
+		ret_atlas.region = Rect2(0, 0, stalker_tex.get_width() * 0.5, stalker_tex.get_height() * 0.5)
+		door_retreat.texture = ret_atlas
+		door_retreat.position = Vector2(320, 272)
+		door_retreat.scale = Vector2(0.18, 0.18)
+		door_retreat.modulate = Color(0.75, 0.85, 0.80, 0.88)
+		door_retreat.z_index = 290
+		add_child(door_retreat)
+		var rtw := create_tween()
+		rtw.tween_property(door_retreat, "position", Vector2(320, 314), 0.75).set_trans(Tween.TRANS_SINE)
+		rtw.parallel().tween_property(door_retreat, "modulate:a", 0.0, 0.75)
+		rtw.tween_callback(door_retreat.queue_free)
 		await get_tree().create_timer(0.35, false).timeout
 		if not is_inside_tree():
 			return
 		AudioManager.play_at(self, "photo_knock", Vector2(320, 305))
-		hud.notify("门外又敲了一次，随后没了声音。去走廊看看。")
+		hud.notify("那道长发黑影刚撞响 304 房门退往走廊，门外地板上掉了一张湿透的检修签——去走廊看看！")
 	else:
 		hud.notify("离开衣柜。")
 
 func begin_shadow_passage() -> void:
 	shadow_event_running = true
 	var delay := Timer.new()
-	delay.wait_time = 0.6
+	delay.wait_time = 0.45
 	delay.one_shot = true
 	add_child(delay)
 	delay.start()
@@ -1904,11 +2330,17 @@ func begin_shadow_passage() -> void:
 			delay.queue_free()
 		return
 	delay.queue_free()
-	var body := StaticBody2D.new()
-	body.collision_layer = 1
-	body.collision_mask = 2
+	var body := CharacterBody2D.new()
+	body.set_meta("is_wardrobe_stalker", true)
+	body.collision_layer = 4
+	body.collision_mask = 1
 	body.position = Vector2(480, 285)
 	body.z_index = 285
+	var stalker_active := [true]
+	# Attach PhoneFlashReceiver so [R] strong flash stuns & drives away the 304 stalker too!
+	var stalker_flash := PhoneFlashReceiver.new()
+	stalker_flash.sense_offset = Vector2(0, -45)
+	body.set_script(null)
 	var collision := CollisionShape2D.new()
 	var shape := CircleShape2D.new()
 	shape.radius = 7
@@ -1917,24 +2349,43 @@ func begin_shadow_passage() -> void:
 	var figure := AnimatedSprite2D.new()
 	var sprite_frames := SpriteFrames.new()
 	sprite_frames.add_animation("walk")
-	sprite_frames.set_animation_speed("walk", 7.0)
-	var sheet: Texture2D = load("res://assets/characters/tanglau_stalker_026.png")
-	for i in range(6):
-		var frame := AtlasTexture.new()
-		frame.atlas = sheet
-		frame.region = Rect2(i * 362, 0, 362, 724)
-		sprite_frames.add_frame("walk", frame)
+	sprite_frames.set_animation_speed("walk", 3.6)
+	sprite_frames.add_animation("peer")
+	sprite_frames.set_animation_speed("peer", 2.2)
+	sprite_frames.set_animation_loop("peer", false)
+	var sheet: Texture2D = preload("res://assets/characters/wardrobe_stalker_v5.png")
+	var cw := sheet.get_width() * 0.5
+	var ch := sheet.get_height() * 0.5
+	for col in range(2):
+		var wf := AtlasTexture.new()
+		wf.atlas = sheet
+		wf.region = Rect2(col * cw, 0, cw, ch)
+		wf.filter_clip = true
+		sprite_frames.add_frame("walk", wf)
+		var pf := AtlasTexture.new()
+		pf.atlas = sheet
+		pf.region = Rect2(col * cw, ch, cw, ch)
+		pf.filter_clip = true
+		sprite_frames.add_frame("peer", pf)
 	figure.sprite_frames = sprite_frames
-	figure.position = Vector2(0, -47)
-	figure.scale = Vector2.ONE * (94.0 / 724.0)
-	figure.modulate = Color(0.86, 0.90, 0.89, 0.98)
-	var matte := Shader.new()
-	matte.code = "shader_type canvas_item; varying vec4 tint; void vertex(){tint=COLOR;} void fragment(){vec4 c=texture(TEXTURE,UV);float white=max(max(c.r,c.g),c.b);c.a *= 1.0-smoothstep(0.49,0.68,white);COLOR=c*tint;}"
-	var matte_material := ShaderMaterial.new()
-	matte_material.shader = matte
-	figure.material = matte_material
+	figure.position = Vector2(0, -52)
+	figure.scale = Vector2.ONE * (104.0 / ch)
+	figure.modulate = Color(0.84, 0.88, 0.88, 0.96)
 	body.add_child(figure)
 	add_child(body)
+	var flashed_away := [false]
+	var flash_listener := func(origin: Vector2, look_dir: Vector2):
+		if flashed_away[0] or not is_instance_valid(body) or not stalker_active[0]:
+			return
+		if body.global_position.distance_to(player.global_position) <= GameState.RULES.phone_flash_range and PhoneFlashReceiver.in_beam(player.global_position, look_dir, body.global_position, GameState.RULES.phone_flash_range, GameState.RULES.phone_flash_angle + 25.0):
+			flashed_away[0] = true
+			stalker_active[0] = false
+			AudioManager.play_world_effect("jiamin_phone_scream")
+			EventBus.phone_defense_feedback.emit("强闪命中！304 房内的恶灵被强光刺退逃向走廊！")
+			var flee_tw := create_tween()
+			flee_tw.tween_property(body, "position:x", 150.0, 0.55).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
+			flee_tw.parallel().tween_property(body, "modulate:a", 0.0, 0.55)
+	EventBus.camera_flash_fired.connect(flash_listener)
 	figure.play("walk")
 	var steps := AudioStreamPlayer2D.new()
 	steps.bus = "SFX"
@@ -1943,26 +2394,51 @@ func begin_shadow_passage() -> void:
 	steps.stream = load("res://assets/audio/recorded/shadow_step.ogg")
 	body.add_child(steps)
 	var step_timer := Timer.new()
-	step_timer.wait_time = 0.62
+	step_timer.wait_time = 0.65
 	body.add_child(step_timer)
 	step_timer.timeout.connect(func():
-		if DisplayServer.get_name() != "headless" and "Dummy" not in OS.get_cmdline_args():
+		if DisplayServer.get_name() != "headless" and "Dummy" not in OS.get_cmdline_args() and not flashed_away[0]:
 			steps.play()
 	)
 	step_timer.start()
-	hud.notify("外面的脚步近了……")
+	hud.notify("门外湿冷的拖行脚步近了……躲进衣柜别出声，或抓准时机按 [ R ] 强闪逼退！")
 	var tween := create_tween()
-	tween.tween_property(body, "position", Vector2(220, 285), 4.0)
+	tween.tween_property(body, "position", Vector2(310, 285), 1.45).set_trans(Tween.TRANS_SINE)
 	await tween.finished
 	if not is_inside_tree():
-		if is_instance_valid(body):
-			body.queue_free()
+		if EventBus.camera_flash_fired.is_connected(flash_listener): EventBus.camera_flash_fired.disconnect(flash_listener)
+		if is_instance_valid(body): body.queue_free()
 		return
-	body.queue_free()
+	if not flashed_away[0]:
+		step_timer.stop()
+		figure.play("peer")
+		AudioManager.play_world_effect("ghost_taunt_whisper")
+		hud.notify("它停在衣柜缝外……苍白腐烂的脸正一寸寸转过来窥视里面！")
+		await get_tree().create_timer(1.20, false).timeout
+		if not is_inside_tree():
+			if EventBus.camera_flash_fired.is_connected(flash_listener): EventBus.camera_flash_fired.disconnect(flash_listener)
+			if is_instance_valid(body): body.queue_free()
+			return
+	if not flashed_away[0]:
+		figure.play("walk")
+		step_timer.start()
+		var tween2 := create_tween()
+		tween2.tween_property(body, "position", Vector2(190, 285), 1.15).set_trans(Tween.TRANS_SINE)
+		await tween2.finished
+		if not is_inside_tree():
+			if EventBus.camera_flash_fired.is_connected(flash_listener): EventBus.camera_flash_fired.disconnect(flash_listener)
+			if is_instance_valid(body): body.queue_free()
+			return
+	if EventBus.camera_flash_fired.is_connected(flash_listener):
+		EventBus.camera_flash_fired.disconnect(flash_listener)
+	stalker_flash.free()
+	if is_instance_valid(body):
+		body.queue_free()
 	shadow_event_running = false
 	GameState.opening_flags.shadow_passed = true
 	checkpoint()
-	hud.notify("脚步声远去了。")
+	if not flashed_away[0]:
+		hud.notify("湿冷的脚步声终于拖着远去了。")
 
 func start_yard_chase() -> void:
 	if GameState.opening_flags.yard_escaped or yard_chase_active:
@@ -1987,12 +2463,12 @@ func start_yard_chase() -> void:
 	yard_shadow.position = Vector2(72, 295)
 	yard_shadow.caught.connect(yard_caught)
 	add_child(yard_shadow)
-	hud.notify("黑影追来了！按住 Shift 狂奔往右侧拱门跑！")
+	hud.notify("黑影追来了！按住 Shift 狂奔往右侧拱门，逼近时可按 [ R ] 手机强闪击退！")
 
 func yard_caught() -> void:
 	yard_chase_active = false
 	AudioManager.stop_chase_music()
-	_capture_cut("res://assets/characters/priest_lunge_026.png", "被黑影扑倒", "退回后院入口，再试一次。按住 Shift 奔跑朝右侧拱门跑，靠近后按 E。", retry_yard)
+	_capture_cut("res://assets/characters/wardrobe_stalker_v5.png", "被黑影扑倒", "退回后院入口，再试一次。按住 Shift 奔跑朝右侧拱门跑，靠近后按 E。", retry_yard)
 
 func retry_yard() -> void:
 	AudioManager.stop_chase_music()
@@ -2043,20 +2519,20 @@ func call_public_phone() -> void:
 	pose.position = player.position + Vector2(0, -45)
 	pose.z_index = int(player.position.y)
 	add_child(pose)
-	AudioManager.play_world_effect("phone_busy")
-	var timer := Timer.new()
-	timer.wait_time = 1.8
-	timer.one_shot = true
-	add_child(timer)
-	timer.start()
-	await timer.timeout
+	AudioManager.play_world_effect("pickup_coin")
+	await get_tree().create_timer(0.32, false).timeout
 	if not is_inside_tree():
-		if is_instance_valid(timer):
-			timer.queue_free()
 		return
-	timer.queue_free()
-	AudioManager.stop_all()
-	pose.queue_free()
+	var keypad := preload("res://ui/payphone_keypad.gd").new()
+	keypad.finished.connect(func(): close_dialog())
+	open_demo_widget(keypad)
+	after_dialog = _hang_up_public_phone.bind(pose)
+
+func _hang_up_public_phone(pose: Sprite2D) -> void:
+	AudioManager.stop_world_effect("phone_busy")
+	AudioManager.stop_world_effect("rotary_ring")
+	if is_instance_valid(pose):
+		pose.queue_free()
 	room_dark_layer.hide()
 	room_lit_layer.show()
 	GameState.opening_flags.help_attempted = true
@@ -2064,7 +2540,7 @@ func call_public_phone() -> void:
 	work_in_progress = false
 	player.sprite.show()
 	player.controls_enabled = true
-	show_text("公用电话", "投了两枚澳门币硬币进电话亭，听筒里只有刺耳的忙音。石阶栏杆上勾着嘉敏衣角的碎布，她往大三巴牌坊地宫方向去了。")
+	show_text("公用电话", "大文挂上听筒。石阶旁滴落着几处暗红血迹，指往高处的牌坊。")
 	update_objective()
 
 func move_room_bed() -> void:
@@ -2084,10 +2560,30 @@ func move_room_bed() -> void:
 	pose.z_index = int(player.position.y)
 	add_child(pose)
 	AudioManager.play_world_effect("bed_scrape")
+	var dust := CPUParticles2D.new()
+	dust.position = Vector2(490, 232)
+	dust.amount = 16
+	dust.lifetime = 0.75
+	dust.one_shot = true
+	dust.explosiveness = 0.35
+	dust.direction = Vector2(-1, -0.3)
+	dust.spread = 45.0
+	dust.gravity = Vector2(0, 12)
+	dust.initial_velocity_min = 18.0
+	dust.initial_velocity_max = 46.0
+	dust.scale_amount_min = 1.6
+	dust.scale_amount_max = 3.2
+	dust.color = Color(0.76, 0.72, 0.62, 0.55)
+	dust.z_index = 240
+	add_child(dust)
+	dust.emitting = true
 	var tween := create_tween()
-	tween.tween_property(room_bed, "position", Vector2(-145,10), 1.1)
-	tween.parallel().tween_property(room_bed_shadow, "position", Vector2(-145,10), 1.1)
+	tween.tween_property(room_bed, "position", Vector2(-88, 8), 0.95).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(room_bed_shadow, "position", Vector2(-88, 8), 0.95).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(pose, "position:x", pose.position.x - 16.0, 0.95).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tween.finished
+	if is_instance_valid(dust):
+		dust.queue_free()
 	if not is_inside_tree():
 		if is_instance_valid(pose):
 			pose.queue_free()
@@ -2259,7 +2755,23 @@ func pickup_phone() -> void:
 
 func show_line(id: String, choices: Array = [], after: Callable = Callable(), photo: Texture2D = null) -> void:
 	var line: Dictionary = dialogues[id]
+	var audio_id = line.get("audio")
+	if audio_id is String and not audio_id.is_empty():
+		AudioManager.play_voice(audio_id, -1.5)
+	if line.has("next"):
+		show_text("福荣旧影", line.subtitle, [], show_line.bind(line.next, choices, after, photo), line.speaker, photo)
+		return
 	show_text("福荣旧影", line.subtitle, choices, after, line.speaker, photo)
+
+func _show_street_local(flag: String, title: String, speaker: String, first_line: String, return_line: String, first_voice := "", return_voice := "") -> void:
+	var seen: bool = GameState.opening_flags[flag]
+	if not seen:
+		GameState.opening_flags[flag] = true
+		checkpoint()
+	var voice_id := return_voice if seen else first_voice
+	if not voice_id.is_empty():
+		AudioManager.play_voice(voice_id, -1.5)
+	show_text(title, return_line if seen else first_line, [], Callable(), speaker)
 
 func show_text(title: String, body: String, choices: Array = [], after: Callable = Callable(), speaker: String = "陈大文", photo: Texture2D = null) -> void:
 	after_dialog = after
@@ -2273,6 +2785,7 @@ func close_dialog(run_after: bool = true) -> void:
 		return
 	var callback := after_dialog
 	after_dialog = Callable()
+	AudioManager.stop_voice()
 	hud.close_panel()
 	get_tree().paused = false
 	player.controls_enabled = not camera_active and not work_in_progress
@@ -2296,15 +2809,16 @@ func update_objective() -> void:
 	elif stage_kind == "bunker_hall":
 		if GameState.opening_flags.ammo_chase_cleared:
 			hud.objective.text = "穿过机房南侧通道，沿楼梯走回铁门外"
-		elif GameState.demo_pursuit == "hall":
+		elif GameState.demo_pursuit == "hall" or GameState.has_demo_item("bunker_recording"):
 			hud.objective.text = "从右侧小拱门下深层楼梯"
 		else:
 			hud.objective.text = "核对机房白记，再进右侧子弹房找录音"
 	elif stage_kind == "bunker_descent":
 		hud.objective.text = "沿楼梯向下，小心右侧深坑"
 	elif stage_kind == "hill_shelter":
-		if GameState.opening_flags.ammo_chase_cleared:
-			hud.objective.text = "门外复听录音，查清旧电话的声音" if not GameState.opening_flags.demo_case_closed else "按嘉敏的便签去大关斜巷，寻找她留下的新痕迹"
+		var bunker_done: bool = GameState.opening_flags.ammo_chase_cleared or GameState.opening_flags.hill_steps_completed
+		if bunker_done:
+			hud.objective.text = "按 B 打开背包复听 A/B 面录音，查清嘉敏的逃生去向" if not GameState.opening_flags.demo_case_closed else "按嘉敏的录音线索前往大关斜巷（走向南侧路口按 E）"
 		else:
 			hud.objective.text = "进入防空洞" if GameState.opening_flags.bunker_gate_unlocked else ("找油壶、钥匙与换锁工单" if GameState.opening_flags.bunker_gate_examined else "检查入口的铁链与挂锁")
 	elif stage_kind == "hill_base":
@@ -2361,9 +2875,9 @@ func _investigation_steps() -> PackedStringArray:
 		])
 	if stage_kind == "crypt" and not flags.crypt_door_open:
 		return PackedStringArray([
-			"辨认现在的石壁和旧图之间改动了什么。",
-			"把巡查照、测绘描图和孩子的涂鸦放在一起，对照三斜痕和侧门框。",
-			"资料齐后，在资料桌旋转、拖动描图，使三斜痕和侧门对齐，再到右侧门框检查卡扣。"
+			"先集齐地宫入口的三处线索：旧合照石壁、墙角孩童涂鸦、地面湿泥足迹。",
+			"对照三处证据辨认：石壁上的凿痕数、中龛被何物封死、嘉敏最后去向。",
+			"点击 1961 三印石龛锁，依次旋转三枚石印对准证据后拉动底部重铁闩，再用工具钳拧下右侧门框螺钉。"
 		])
 	if stage_kind == "hill_shelter" and not flags.bunker_gate_unlocked:
 		return PackedStringArray([
@@ -2374,7 +2888,7 @@ func _investigation_steps() -> PackedStringArray:
 	return PackedStringArray()
 
 func pause_menu() -> void:
-	show_text("暂停", "WASD 移动　E 交谈／翻页\nC 举起手机　鼠标取景／左键拍照\nQ / Tab 手机　B 背包　M 地图　J 手札\nH 查看当前谜题提示", [{"text":"继续", "callback":close_dialog}, {"text":"重玩开场", "callback":confirm_restart_opening}, {"text":"退出", "callback":func():get_tree().quit(), "width":100}])
+	show_text("暂停", "WASD 移动　E 交谈／翻页\nC 举起手机　鼠标取景／左键拍照\nQ / Tab 手机　B 背包　M 地图　J 线索\nH 查看当前谜题提示", [{"text":"继续", "callback":close_dialog}, {"text":"重玩开场", "callback":confirm_restart_opening}, {"text":"退出", "callback":func():get_tree().quit(), "width":100}])
 
 func confirm_restart_opening() -> void:
 	show_text("重玩开场", "将先备份当前存档与照片，再从香港序章开始。确认后，继续游戏会读取新进度。", [

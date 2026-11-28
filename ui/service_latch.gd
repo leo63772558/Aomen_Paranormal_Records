@@ -17,7 +17,7 @@ var drag_start := Vector2.ZERO
 var angle := -1.1
 var slide := 0.0
 var busy := false
-var status := "这里少了可拆手柄。看过门外检修签，再寻找零件。"
+var status := "这里少了可拆手柄。找齐「旧握柄」与「方轴」后，按 [ B ] 打开背包组合手柄！"
 var focus_suspended := false
 var focus_previous_mode := Node.PROCESS_MODE_INHERIT
 
@@ -45,6 +45,8 @@ func _ready() -> void:
 	handle = DemoItems.texture("service_handle")
 	if GameState.has_demo_item("service_handle"):
 		status = "拖动组装好的手柄到方孔。门舌受力，先把门顶向门框。"
+	elif GameState.has_demo_item("service_grip") and GameState.has_demo_item("service_spindle"):
+		status = "你已集齐「旧握柄」与「方轴」！请先按 [ B ] 打开背包，点「立即组装」合成手柄。"
 
 func _gui_input(event: InputEvent) -> void:
 	if busy:
@@ -69,38 +71,41 @@ func _gui_input(event: InputEvent) -> void:
 				status = "偏心轮已顶开卡扣。按住右侧锁舌，向左拉。"
 		elif not attached and TRAY.has_point(pointer) and GameState.has_demo_item("service_handle"):
 			held = "handle"
-		elif PLATE.has_point(pointer):
+		elif PLATE.grow(14.0).has_point(pointer):
 			relieved = true
-			status = "门被顶进了门框，锁舌松了。顺着磨痕向右拖手柄。"
+			status = "门被顶进了门框，锁舌松了。按住手柄向右拖转。"
 			AudioManager.play_world_effect("gate_iron")
-		elif attached and pointer.distance_to(CENTER) < 59:
+		elif attached and pointer.distance_to(CENTER) < 112:
 			if relieved:
 				held = "turn"
 			else:
-				status = "锁舌压得太紧。先按门上的顶板。"
+				status = "锁舌压得太紧。先点击右下方高亮的金属顶板卸力。"
 		else:
 			status = "在 304 和通道工具架找握柄、方轴。按 B 组装。"
 	else:
-		if held == "handle" and pointer.distance_to(CENTER) <= 65:
-			attached = true
-			status = "手柄扣进方孔。用右下的顶板给锁舌卸力。"
-			AudioManager.play_world_effect("lock_mechanism")
+		if held == "handle":
+			if pointer.distance_to(CENTER) <= 88 or pointer.distance_to(drag_start) < 12.0:
+				attached = true
+				status = "手柄已稳稳扣进方孔！先点右下高亮金属顶板给锁舌卸力。"
+				AudioManager.play_world_effect("use_install_snap")
+			else:
+				status = "把组装好的手柄拖到中央方孔处（或直接点击托盘手柄自动装入）。"
 		elif held == "turn":
-			if pointer.x - drag_start.x >= 51:
+			if pointer.x - drag_start.x >= 36 or pointer.distance_to(drag_start) < 14.0:
 				rotated = true
 				angle = 0.55
-				status = "偏心轮已顶开卡扣。向左拉回右侧锁舌。"
+				status = "咔哒！偏心轮已顶开卡扣！按住或点击右侧高亮锁舌向左拉出。"
 				AudioManager.play_world_effect("lock_mechanism")
 			else:
 				angle = -1.1
-				status = "旋得还不够。沿磨痕把手柄向右带过去。"
+				status = "旋得还不够。向右拖转手柄（或直接点击手柄旋开）。"
 		elif held == "bolt":
 			slide = clampf(drag_start.x - pointer.x, 0.0, 56.0)
-			if slide >= 48:
+			if slide >= 34 or pointer.distance_to(drag_start) < 14.0:
 				busy = true
 				AudioManager.play_world_effect("gate_chain")
 				var motion := create_tween()
-				motion.tween_method(_finish_slide, slide, 108.0, 0.32)
+				motion.tween_method(_finish_slide, maxf(slide, 14.0), 108.0, 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 				motion.tween_callback(func(): unlocked.emit())
 			else:
 				slide = 0.0
@@ -119,17 +124,23 @@ func _draw() -> void:
 	draw_rect(Rect2(0, 0, 618, 28), Color(0, 0, 0, 0.85))
 	draw_string(font, Vector2(15, 20), "通道 · 配重插栓", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("e8d4a2"))
 	draw_string(font, Vector2(535, 20), "Esc 返回", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("d9d1b7"))
-	draw_rect(PLATE, Color(0.72, 0.62, 0.43, 0.1 if relieved else 0.22), false, 1.0)
-	draw_string(font, PLATE.position + Vector2(24, 81), "顶住门板", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("efe1b5"))
+	draw_rect(PLATE, Color(0.95, 0.84, 0.52, 0.82 if (attached and not relieved) else (0.14 if relieved else 0.30)), false, 2.0 if (attached and not relieved) else 1.0)
+	draw_string(font, PLATE.position + Vector2(24, 81), "① 先点此顶住门板" if (attached and not relieved) else "顶住门板", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("f6e4a8") if (attached and not relieved) else Color("efe1b5"))
 	if handle != null and GameState.has_demo_item("service_handle"):
 		if attached:
+			if relieved and not rotated:
+				draw_arc(CENTER, 76.0, -1.15, 0.55, 22, Color(0.96, 0.85, 0.52, 0.72), 2.0, true)
+				draw_string(font, CENTER + Vector2(36, -68), "② 按住向右拖转 ↻", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("f6e4a8"))
 			draw_set_transform(CENTER, angle)
 			draw_texture_rect(handle, Rect2(-14, -23, 102, 46), false)
 			draw_set_transform(Vector2.ZERO)
 		else:
 			var where := pointer if held == "handle" else TRAY.get_center()
+			draw_rect(TRAY.grow(4.0), Color("f2d988", 0.75), false, 1.8)
+			draw_arc(CENTER, 28.0, 0.0, TAU, 24, Color("f2d988", 0.7), 1.6, true)
 			draw_texture_rect(handle, Rect2(where - Vector2(61, 29), Vector2(122, 58)), false)
 	if rotated:
-		draw_rect(Rect2(SLIDE.position - Vector2(slide, 0), SLIDE.size), Color(0.82, 0.73, 0.47, 0.52), false, 2.0)
+		draw_rect(Rect2(SLIDE.position - Vector2(slide, 0), SLIDE.size), Color(0.96, 0.85, 0.52, 0.88), false, 2.2)
+		draw_string(font, SLIDE.position + Vector2(-4, -8), "← ③ 按住向左拉出插栓", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("f6e4a8"))
 	draw_rect(Rect2(0, 298, 618, 32), Color("111a16"))
 	draw_string(font, Vector2(12, 320), status, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("e8ddc2"))

@@ -2,6 +2,15 @@ extends Node
 
 # Scripted regression is opt-in; it never runs in ordinary play.
 func _ready() -> void:
+	if "--guided-playtest" in OS.get_cmdline_user_args() and GameState.launch_valid:
+		var path := "res://core/components/guided_director.gd"
+		if ResourceLoader.exists(path):
+			var script = load(path)
+			if script != null:
+				var director = script.new()
+				director.name = "GuidedPlaytestDirector"
+				get_tree().root.call_deferred("add_child", director)
+				return
 	if "--autobot" in OS.get_cmdline_user_args() and GameState.launch_valid:
 		call_deferred("_start_regression")
 

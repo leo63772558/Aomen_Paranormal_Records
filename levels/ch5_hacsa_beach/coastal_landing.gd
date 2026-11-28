@@ -33,7 +33,7 @@ func _ready() -> void:
 	if GameState.current_room_id != ROOM_ID or not GameState.opening_flags.coastal_route_verified:
 		push_error("The lower coastal landing requires the verified shaft route.")
 		return
-	AudioManager.set_scene_ambience("crypt")
+	AudioManager.set_scene_ambience("coastal")
 	_build_background()
 	_build_geometry()
 	_build_hotspots()
@@ -59,7 +59,7 @@ func _ready() -> void:
 	if not GameState.opening_flags.coastal_landing_seen:
 		GameState.opening_flags.coastal_landing_seen = true
 		checkpoint()
-		hud.notify("闸门锈死了。右侧窄口有粉笔记号。")
+		hud.notify("闸门锈死了。右侧窄口挂着一缕红布。")
 
 func _build_background() -> void:
 	var background := Sprite2D.new()
@@ -186,7 +186,7 @@ func _all_lower_evidence_seen() -> bool:
 	return true
 
 func _open_record() -> void:
-	_say("手札 · 沿海工事", _journal_text())
+	_say("现场线索 · 沿海工事", _journal_text())
 
 func _journal_text() -> String:
 	var lines: Array[String] = ["沿海工事 · 下层记录", ""]
@@ -196,14 +196,14 @@ func _journal_text() -> String:
 	if _all_lower_evidence_seen():
 		lines.append("\n退路被潮线与封闭闸门排除；箭头和布丝指向右侧窄道。后续连通方向仍未核实。")
 	else:
-		lines.append("\n核对水线、闸门状态和粉笔方向，再判断嘉敏从哪里继续前进。")
+		lines.append("\n核对水线、闸门状态和红布方向，再判断嘉敏从哪里继续前进。")
 	return "\n".join(lines)
 
 func _update_objective() -> void:
 	if not is_instance_valid(hud):
 		return
-	hud.state_text.text = "井下平台     [ J ] 手札"
-	hud.objective.text = "三项现场痕迹已核对。沿粉笔箭头进入右侧干燥窄道。" if _all_lower_evidence_seen() else "沿粉笔箭头走到右边窄口，按 E 钻过去。"
+	hud.state_text.text = "井下平台     [ B ] 线索"
+	hud.objective.text = "三项现场痕迹已核对。沿右侧干燥窄道继续前进。" if _all_lower_evidence_seen() else "沿着红布线索走到右边窄口，按 E 钻过去。"
 
 func _open_widget(control: Control) -> void:
 	widget = control
@@ -290,7 +290,7 @@ func _enter_crawlway(destination := "ch5_coastal_chamber") -> void:
 	player.reset_physics_interpolation()
 	player.crouching = false
 	player.controls_enabled = true
-	_say("窄道暂时无法通行", "这段通道的现场痕迹已经核对，但前方暂时无法进入。大文退回平台，没有把未确认的去向写进手札。")
+	_say("窄道暂时无法通行", "这段通道的现场痕迹已经核对，但前方暂时无法进入。大文退回平台，没有把未确认的去向记进线索。")
 
 func _fade_in() -> void:
 	var layer := CanvasLayer.new()

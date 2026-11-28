@@ -153,6 +153,7 @@ func run() -> void:
 		push_error("FAIL silt tunnel regression requires --profile=test")
 		get_tree().quit(1)
 		return
+	GameState.legacy_coastal_qa = true
 	seed_chamber()
 	check(GameState.profile == "test", "isolated test profile")
 	scene = load("res://levels/ch5_hacsa_beach/coastal_chamber.tscn").instantiate()

@@ -108,13 +108,14 @@ func verify_enemy(role: String) -> void:
 	check(enemy.flash_receiver.is_stunned() and enemy.velocity == Vector2.ZERO, role + " stun cancels movement immediately")
 	var before := enemy.position
 	await physics(30)
-	check(enemy.position == before and captures == capture_start, role + " cannot move or capture while stunned")
+	var resting := enemy.position
+	check(resting.x > before.x and resting.distance_to(before) <= 50.0 and captures == capture_start, role + " recoils away from the camera without capturing during stun")
 	if role in ["shadow", "priest"]:
 		check(not enemy.get_node("Figure").is_playing(), role + " walk animation pauses during stun")
 	var remaining: float = enemy.flash_receiver.stun_remaining
 	get_tree().paused = true
 	await frames(35)
-	check(is_equal_approx(enemy.flash_receiver.stun_remaining, remaining) and enemy.position == before, role + " pause preserves the full remaining stun")
+	check(is_equal_approx(enemy.flash_receiver.stun_remaining, remaining) and enemy.position == resting, role + " pause preserves the full remaining stun")
 	get_tree().paused = false
 	# Target has moved beyond an opaque wall. Recovery must use the position seen
 	# at the flash, not the hidden player's current position or movement velocity.
@@ -123,7 +124,7 @@ func verify_enemy(role: String) -> void:
 	player.position = Vector2(580, 450)
 	await physics(130)
 	check(not enemy.flash_receiver.is_stunned() and enemy.flash_receiver.search_remaining > 0.0, role + " recovers into search while target is behind a wall")
-	check(enemy.position.x < before.x and captures == capture_start, role + " searches the last seen position without teleport or capture")
+	check(enemy.position.x < resting.x and captures == capture_start, role + " searches the last seen position without teleport or capture")
 	wall.queue_free()
 	occluder.queue_free()
 	await physics(4)
@@ -210,9 +211,9 @@ func verify_no_flash_protection() -> void:
 	check(enemy.position.distance_to(player.position) > before.distance_to(player.position) and flash_events == before_events, "headlight refuge drives the apparition back without a defensive flash")
 	enemy.active = false
 	beach.lit = false
-	player.position = Vector2(400, 310)
-	enemy.position = Vector2(430, 360)
+	player.position = Vector2(400, 235)
+	enemy.position = Vector2(400, 260)
 	enemy.active = true
 	var capture_start := captures
 	await physics(10)
-	check(captures == capture_start and enemy.position.y >= 354, "beach dry ground remains a non-flash escape boundary")
+	check(captures == capture_start and enemy.position.y >= 260, "beach promenade remains a non-flash escape boundary at close range")

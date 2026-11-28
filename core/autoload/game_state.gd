@@ -13,6 +13,18 @@ var phone_flash_cooldown: float = 0.0
 var phone_supplied_chapters: Dictionary = {}
 var reduced_flash := false
 var large_dialogue_text := false
+var touch_mode_active: bool = false
+var touch_controls_preference: String = "auto"
+var touch_auto_sprint: bool = true
+var touch_scale: float = 1.0
+var touch_move_vector: Vector2 = Vector2.ZERO
+var touch_sprint_held: bool = false
+var touch_aim_vector: Vector2 = Vector2.ZERO
+var touch_aim_active: bool = false
+var active_hud: CanvasLayer = null
+var active_player: Node = null
+var _web_state_push_timer: float = 0.0
+var _last_web_state_json: String = ""
 # These are protected arrival/preparation rooms, not the chase rooms themselves.
 const PHONE_PREPARATIONS := {
 	"ch0_tanglau":"ch0_room304", "ch1_stpaul_crypt":"ch1_crypt_entry",
@@ -21,10 +33,10 @@ const PHONE_PREPARATIONS := {
 	"ch6_abandoned_vip":"ch6_abandoned_vip"
 }
 const PHONE_PREPARATION_POINTS := {
-	"ch0_room304":Vector2(278, 305), "ch1_crypt_entry":Vector2(280, 305),
-	"ch2_hill_base":Vector2(274, 305), "ch3_amparo_archive":Vector2(280, 310),
-	"ch4_bus_loop":Vector2(206, 252), "ch5_hacsa_beach":Vector2(148, 265),
-	"ch6_abandoned_vip":Vector2(695, 665)
+	"ch0_room304":Vector2(180, 182), "ch1_crypt_entry":Vector2(180, 152),
+	"ch2_hill_base":Vector2(180, 212), "ch3_amparo_archive":Vector2(22, 232),
+	"ch4_bus_loop":Vector2(206, 248), "ch5_hacsa_beach":Vector2(148, 224),
+	"ch6_abandoned_vip":Vector2(768, 635)
 }
 var profile: String = "player"
 var run_id: String = "player"
@@ -32,18 +44,21 @@ var launch_valid: bool = true
 var opening_flags: Dictionary = OpeningCheckpoint.default_flags()
 var opening_switches: Dictionary = OpeningCheckpoint.SWITCHES.duplicate(true)
 var opening_items: Dictionary = {"multitool_pliers": 1}
+var equipped_item_id: String = ""
 var demo_pursuit: String = ""
 var opening_photo: Texture2D
 var opening_photo_file: String=""
 var opening_resume_checked: bool=false
 var opening_load_notice: String=""
 var transition_save_failed := false
+var macau_guide_unlocked: Array[String] = []
 var current_room_id: String = "ch0_hk_work"
 var pending_entry_id: String = "arrival"
 var current_role := "dawen"
 var preview_state: Dictionary = {}
 var bus_loop_state := {"successes":0, "anomaly":"", "cycle":0, "bell_pulled":false, "initialized":false}
-const PREVIEW_FIELDS := ["current_chapter_id", "current_room_id", "pending_entry_id", "current_role", "role_resources", "stamina", "flashlight_battery", "phone_battery", "phone_flash_charges", "phone_flash_cooldown", "phone_supplied_chapters", "opening_flags", "opening_switches", "opening_items", "demo_pursuit", "opening_photo", "opening_photo_file", "opening_resume_checked", "opening_load_notice", "transition_save_failed"]
+var legacy_coastal_qa := false
+const PREVIEW_FIELDS := ["current_chapter_id", "current_room_id", "pending_entry_id", "current_role", "role_resources", "stamina", "flashlight_battery", "phone_battery", "phone_flash_charges", "phone_flash_cooldown", "phone_supplied_chapters", "opening_flags", "opening_switches", "opening_items", "macau_guide_unlocked", "demo_pursuit", "opening_photo", "opening_photo_file", "opening_resume_checked", "opening_load_notice", "transition_save_failed"]
 
 func save_transition_checkpoint() -> void:
 	if not save_opening_checkpoint():
@@ -116,6 +131,8 @@ func reset_opening() -> bool:
 	role_resources = {"dawen":{"stamina":100.0,"flashlight_battery":100.0}, "ah_hao":{"stamina":100.0,"flashlight_battery":100.0}, "jiamin":{"stamina":25.0,"flashlight_battery":0.0}}
 	opening_flags = OpeningCheckpoint.default_flags()
 	opening_items = {"multitool_pliers": 1}
+	macau_guide_unlocked.clear()
+	equipped_item_id = ""
 	demo_pursuit = ""
 	opening_photo = null
 	opening_photo_file=""
@@ -255,6 +272,18 @@ func prepare_opening_resume() -> void:
 		if not save_opening_checkpoint():
 			push_warning("Legacy player checkpoint loaded but could not be migrated; legacy data remains untouched.")
 
+func uses_legacy_coastal_rooms() -> bool:
+	return profile == "test" and legacy_coastal_qa
+
+func mark_coastal_landing_passed() -> void:
+	opening_flags.coastal_landing_seen = true
+	opening_flags.coastal_crawlway_seen = true
+
+func mark_coastal_silt_passed() -> void:
+	opening_flags.coastal_silt_intro_seen = true
+	opening_flags.coastal_silt_arch_seen = true
+	opening_flags.coastal_silt_route_verified = true
+
 func _apply_opening_checkpoint(data: Dictionary, source_profile_path: String) -> void:
 	opening_flags=data.flags.duplicate(true)
 	opening_switches=data.switches.duplicate(true)
@@ -268,23 +297,25 @@ func _apply_opening_checkpoint(data: Dictionary, source_profile_path: String) ->
 	current_role = data.active_role
 	role_resources = data.role_resources.duplicate(true)
 	bus_loop_state = data.bus_loop_state.duplicate(true)
+	macau_guide_unlocked.clear()
+	for card_id in data.get("macau_guide", []):
+		if card_id is String and card_id not in macau_guide_unlocked:
+			macau_guide_unlocked.append(card_id)
 	current_room_id=data.room_id
 	current_chapter_id=data.current_chapter_id
 	pending_entry_id=data.entry_id
-	# A staircase is an active encounter, never a place to resume mid-pursuit.
-	if current_room_id == "ch2_hill_steps":
+	# A staircase or retired guard shelter is never a place to resume mid-pursuit.
+	if current_room_id == "ch2_hill_steps" or current_room_id == "ch2_bunker_shaft":
 		current_room_id = "ch2_bunker_hall"
 		pending_entry_id = "from_steps"
-	elif profile != "test" and current_room_id == "ch5_coastal_landing":
+	elif not uses_legacy_coastal_rooms() and current_room_id == "ch5_coastal_landing":
 		current_room_id = "ch5_coastal_chamber"
 		pending_entry_id = "from_landing"
-		opening_flags.coastal_route_verified = true
-		opening_flags.coastal_crawlway_seen = true
-	elif profile != "test" and current_room_id == "ch5_coastal_silt_tunnel":
+		mark_coastal_landing_passed()
+	elif not uses_legacy_coastal_rooms() and current_room_id == "ch5_coastal_silt_tunnel":
 		current_room_id = "ch5_coastal_pressure_gallery"
 		pending_entry_id = "from_silt_tunnel"
-		opening_flags.coastal_chamber_route_verified = true
-		opening_flags.coastal_silt_route_verified = true
+		mark_coastal_silt_passed()
 	opening_photo_file=data.photo_file
 	opening_photo = null
 	if opening_flags.photo_taken:
@@ -303,7 +334,18 @@ func _opening_checkpoint_data() -> Dictionary:
 		"flags":opening_flags.duplicate(true),"switches":opening_switches.duplicate(true),"items":opening_items.duplicate(),
 		"resources":{"stamina":stamina,"flashlight_battery":flashlight_battery},"photo_file":opening_photo_file,
 		"phone_defense":{"battery":phone_battery,"charges":phone_flash_charges,"cooldown":phone_flash_cooldown,"supplied_chapters":phone_supplied_chapters.duplicate()},
-		"active_role":current_role,"role_resources":role_resources.duplicate(true), "bus_loop_state":bus_loop_state.duplicate(true)}
+		"active_role":current_role,"role_resources":role_resources.duplicate(true), "bus_loop_state":bus_loop_state.duplicate(true),
+		"macau_guide":macau_guide_unlocked.duplicate()}
+
+func unlock_macau_guide(card_id: String, show_toast := true) -> bool:
+	if not MacauGuide.CARDS.has(card_id) or card_id in macau_guide_unlocked:
+		return false
+	macau_guide_unlocked.append(card_id)
+	if show_toast and is_instance_valid(EventBus):
+		var c: Dictionary = MacauGuide.get_card(card_id)
+		EventBus.phone_defense_feedback.emit("【澳门见闻图鉴】已收录：%s（打开手机或背包可随时翻阅）" % str(c.get("title", card_id)))
+	save_opening_checkpoint()
+	return true
 
 func save_opening_checkpoint() -> bool:
 	if not opening_checkpoint_enabled() or not demo_pursuit.is_empty():
@@ -356,6 +398,14 @@ func restore_pre_ending_checkpoint() -> bool:
 	return true
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	# Enable smooth fractional window scaling on real displays so maximized windows fill the screen without giant integer black bars,
+	# while keeping headless 100x100 dummy windows at exact 1:1 coordinate parity for automated QA.
+	if DisplayServer.get_name() != "headless":
+		var win := get_window()
+		if win != null:
+			win.content_scale_stretch = Window.CONTENT_SCALE_STRETCH_FRACTIONAL
+			win.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP
 	var bindings := {
 		"move_left": [KEY_A], "move_right": [KEY_D], "move_up": [KEY_W], "move_down": [KEY_S],
 		"sprint": [KEY_SHIFT], "crouch": [KEY_CTRL], "interact": [KEY_E], "flashlight": [KEY_F],
@@ -396,20 +446,131 @@ func _ready() -> void:
 		var preferences := ConfigFile.new()
 		if preferences.load(get_profile_path().path_join("visual_preferences.cfg")) == OK:
 			reduced_flash = preferences.get_value("visual", "reduced_flash", false) == true
+			var saved_mode := str(preferences.get_value("touch", "mode", "auto"))
+			if saved_mode in ["auto", "on", "off"]:
+				touch_controls_preference = saved_mode
+			touch_auto_sprint = preferences.get_value("touch", "auto_sprint", true) == true
+			touch_scale = clampf(float(preferences.get_value("touch", "scale", 1.0)), 0.85, 1.15)
 		var text_preferences := ConfigFile.new()
 		if text_preferences.load(get_profile_path().path_join("text_preferences.cfg")) == OK:
 			large_dialogue_text = text_preferences.get_value("text", "large_dialogue", false) == true
 
 func _physics_process(delta: float) -> void:
+	if get_tree().paused:
+		return
 	for actor in get_tree().get_nodes_in_group("phone_flash_actor"):
 		if actor.controls_enabled and current_role == "dawen":
 			phone_flash_cooldown = maxf(0.0, phone_flash_cooldown - delta)
 			return
 
+func _process(delta: float) -> void:
+	if not OS.has_feature("web"):
+		return
+	var raw = JavaScriptBridge.eval("window.__AOMEN_BRIDGE__ && window.__AOMEN_BRIDGE__.poll ? window.__AOMEN_BRIDGE__.poll() : ''", false)
+	if raw is String and not raw.is_empty():
+		var parsed = JSON.parse_string(raw)
+		if parsed is Dictionary:
+			touch_mode_active = bool(parsed.get("ta", false))
+			touch_move_vector = Vector2(float(parsed.get("mx", 0.0)), float(parsed.get("my", 0.0)))
+			touch_sprint_held = bool(parsed.get("sp", false))
+			touch_aim_vector = Vector2(float(parsed.get("ax", 0.0)), float(parsed.get("ay", 0.0)))
+			touch_aim_active = bool(parsed.get("aa", false))
+			var events = parsed.get("ev", [])
+			if events is Array:
+				for item in events:
+					if item is Dictionary and item.has("a"):
+						var ev := InputEventAction.new()
+						ev.action = str(item.get("a", ""))
+						ev.pressed = bool(item.get("p", false))
+						ev.strength = 1.0 if ev.pressed else 0.0
+						Input.parse_input_event(ev)
+			var pref = parsed.get("pref", null)
+			if pref is Dictionary:
+				var pm := str(pref.get("mode", touch_controls_preference))
+				if pm in ["auto", "on", "off"] and pm != touch_controls_preference:
+					set_touch_controls_preference(pm)
+				if pref.has("autoSprint") and bool(pref["autoSprint"]) != touch_auto_sprint:
+					set_touch_auto_sprint(bool(pref["autoSprint"]))
+				if pref.has("scale"):
+					var ps := clampf(float(pref["scale"]), 0.85, 1.15)
+					if not is_equal_approx(ps, touch_scale):
+						set_touch_scale(ps)
+	_web_state_push_timer += delta
+	if _web_state_push_timer >= 0.08:
+		_web_state_push_timer = 0.0
+		var state_json := JSON.stringify(_collect_touch_ui_state())
+		if state_json != _last_web_state_json:
+			_last_web_state_json = state_json
+			JavaScriptBridge.eval("window.__AOMEN_BRIDGE__ && window.__AOMEN_BRIDGE__.setState(" + state_json + ")", false)
+
+func _is_camera_view_visible() -> bool:
+	if not is_instance_valid(active_hud) or not is_instance_valid(active_hud.get("root")):
+		return false
+	for child in active_hud.root.get_children():
+		if child is Control and child.visible and child.has_method("frame_rect"):
+			return true
+	return false
+
+func _clean_prompt_verb(raw_prompt: String) -> String:
+	var text := raw_prompt.strip_edges()
+	for prefix in ["[ E ] ", "[E] ", "按 E ", "按E "]:
+		if text.begins_with(prefix):
+			text = text.substr(prefix.length()).strip_edges()
+	if text.is_empty():
+		return ""
+	return text
+
+func _collect_touch_ui_state() -> Dictionary:
+	var hud_valid := is_instance_valid(active_hud) and active_hud.is_inside_tree()
+	var player_valid := is_instance_valid(active_player) and active_player.is_inside_tree()
+	var mode := "explore"
+	if not hud_valid and not player_valid:
+		mode = "menu"
+	elif hud_valid and active_hud.panel_open and (bool(active_hud.get("is_widget_modal")) or not str(active_hud.get("archive_page")).is_empty()):
+		mode = "modal"
+	elif hud_valid and active_hud.panel_open:
+		mode = "dialogue"
+	elif _is_camera_view_visible():
+		mode = "camera"
+	elif not get_tree().get_nodes_in_group("pipe_knock_panel").is_empty():
+		mode = "pipe_knock"
+	elif not player_valid or not active_player.controls_enabled or get_tree().paused:
+		mode = "cutscene"
+	elif active_player.hidden_in_wardrobe:
+		mode = "hidden"
+
+	var raw_prompt := ""
+	if hud_valid and is_instance_valid(active_hud.prompt) and active_hud.prompt.visible:
+		raw_prompt = active_hud.prompt.text
+	var cleaned_prompt := _clean_prompt_verb(raw_prompt)
+	var has_phone := current_role == "dawen" and bool(opening_flags.get("jiamin_phone_found", false)) and has_demo_item("jiamin_phone")
+	var can_hint: bool = hud_valid and active_hud.has_method("_hint_available") and bool(active_hud._hint_available())
+	return {
+		"mode": mode,
+		"prompt": cleaned_prompt,
+		"hasTarget": not cleaned_prompt.is_empty(),
+		"crouching": bool(active_player.crouching) if player_valid else false,
+		"flashlightOn": bool(active_player.flashlight_on) if player_valid else false,
+		"allowFlashlight": bool(active_player.allow_flashlight) if player_valid else false,
+		"hasPhone": has_phone,
+		"flashCharges": phone_flash_charges,
+		"flashCooldown": snappedf(phone_flash_cooldown, 0.1),
+		"canCombineBag": has_demo_item("service_grip") and has_demo_item("service_spindle"),
+		"bagCount": opening_items.size(),
+		"canMap": has_demo_item("trip_map") or bool(opening_flags.get("jiamin_phone_found", false)),
+		"canCamera": current_room_id == "ch0_street" and not bool(opening_flags.get("photo_taken", false)),
+		"canHint": can_hint,
+		"dialogueChoices": int(active_hud.choice_count) if (hud_valid and mode == "dialogue") else 0,
+		"prefMode": touch_controls_preference,
+		"prefAutoSprint": touch_auto_sprint,
+		"prefScale": touch_scale,
+	}
+
 func try_use_phone_flash(actor: PlayerController) -> Dictionary:
 	if not is_instance_valid(actor) or not actor.is_inside_tree() or get_tree().paused or not actor.controls_enabled or actor.hidden_in_wardrobe or not actor.allow_phone_defense:
 		return {"ok":false,"reason":"先返回现场，离开藏身处后再举机。"}
-	if current_role != "dawen" or not opening_flags.jiamin_phone_found or not has_demo_item("jiamin_phone"):
+	var dawen_own_phone: bool = current_room_id == "ch0_ah_kin" and opening_flags.ah_hao_dead
+	if current_role != "dawen" or (not dawen_own_phone and (not opening_flags.jiamin_phone_found or not has_demo_item("jiamin_phone"))):
 		return {"ok":false,"reason":"还没有可以使用强闪的手机。"}
 	if phone_flash_cooldown > 0.0:
 		return {"ok":false,"reason":"闪光还在回充，稍等一下。"}
@@ -459,15 +620,33 @@ func recharge_preparation() -> bool:
 	save_transition_checkpoint()
 	return true
 
-func set_reduced_flash(enabled: bool) -> void:
-	reduced_flash = enabled
+func _save_visual_preference(section: String, key: String, value) -> void:
 	if not launch_valid:
 		return
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(get_profile_path()))
 	var preferences := ConfigFile.new()
-	preferences.set_value("visual", "reduced_flash", enabled)
+	preferences.load(get_profile_path().path_join("visual_preferences.cfg"))
+	preferences.set_value(section, key, value)
 	if preferences.save(get_profile_path().path_join("visual_preferences.cfg")) != OK:
-		push_warning("Could not save the reduced-flash preference.")
+		push_warning("Could not save preference %s/%s." % [section, key])
+
+func set_reduced_flash(enabled: bool) -> void:
+	reduced_flash = enabled
+	_save_visual_preference("visual", "reduced_flash", enabled)
+
+func set_touch_controls_preference(mode: String) -> void:
+	if mode not in ["auto", "on", "off"]:
+		return
+	touch_controls_preference = mode
+	_save_visual_preference("touch", "mode", mode)
+
+func set_touch_auto_sprint(enabled: bool) -> void:
+	touch_auto_sprint = enabled
+	_save_visual_preference("touch", "auto_sprint", enabled)
+
+func set_touch_scale(scale_val: float) -> void:
+	touch_scale = clampf(scale_val, 0.85, 1.15)
+	_save_visual_preference("touch", "scale", touch_scale)
 
 func set_large_dialogue_text(enabled: bool) -> bool:
 	large_dialogue_text = enabled

@@ -6,15 +6,17 @@ var start_button: Button
 var new_button: Button
 var load_error: Label
 var new_game_error: Label
-var title_font: SystemFont
+var title_font: Font
+var _menu_foley_player: AudioStreamPlayer
+var _menu_foley_next_knock := false
 
 func _ready() -> void:
 	GameState.end_preview()
 	GameState.prepare_opening_resume()
-	AudioManager.set_scene_ambience("")
+	AudioManager.set_scene_ambience("main_menu" if (GameState.profile != "test" and DisplayServer.get_name() != "headless") else "")
+	_setup_menu_foley()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	title_font = SystemFont.new()
-	title_font.font_names = PackedStringArray(["STZhongsong", "SimSun", "Noto Serif CJK SC"])
+	title_font = UiFont.title()
 	var typography := Theme.new()
 	typography.default_font = title_font
 	theme = typography
@@ -47,10 +49,35 @@ func _ready() -> void:
 	menu.add_child(audio_btn)
 	var quit_button := _button("退出")
 	quit_button.pressed.connect(func(): get_tree().quit())
+	if OS.has_feature("web"):
+		quit_button.hide()
 	menu.add_child(quit_button)
 	load_error = _caption(self, "", Vector2(73, 342), 11, Color("edb1a0"))
 	if "--autobot" not in OS.get_cmdline_user_args():
 		_focus_entry()
+
+func _setup_menu_foley() -> void:
+	if GameState.profile == "test" or DisplayServer.get_name() == "headless":
+		return
+	_menu_foley_player = AudioStreamPlayer.new()
+	_menu_foley_player.bus = "SFX"
+	_menu_foley_player.volume_db = -11.0
+	add_child(_menu_foley_player)
+	_schedule_next_menu_foley(4.5)
+
+func _schedule_next_menu_foley(delay_sec: float) -> void:
+	var t := get_tree().create_timer(delay_sec, true)
+	t.timeout.connect(func():
+		if not is_inside_tree() or not is_instance_valid(_menu_foley_player):
+			return
+		var key := "menu_door_knock" if _menu_foley_next_knock else "menu_footsteps"
+		_menu_foley_next_knock = not _menu_foley_next_knock
+		var path: String = AudioManager.WORLD_SOUNDS.get(key, "")
+		if not path.is_empty() and ResourceLoader.exists(path):
+			_menu_foley_player.stream = load(path)
+			_menu_foley_player.play()
+		_schedule_next_menu_foley(randf_range(10.5, 16.5))
+	)
 
 func _has_opening_progress() -> bool:
 	var path := GameState.get_profile_path()
@@ -58,7 +85,10 @@ func _has_opening_progress() -> bool:
 
 func _focus_entry() -> void:
 	var primary := new_button if start_button.disabled else start_button
-	primary.grab_focus.call_deferred()
+	(func():
+		if is_instance_valid(primary) and primary.is_inside_tree():
+			primary.grab_focus()
+	).call_deferred()
 
 func _open_audio_settings() -> void:
 	if is_instance_valid(notice_panel):
@@ -116,11 +146,27 @@ func _open_audio_settings() -> void:
 	reduce.button_pressed = GameState.reduced_flash
 	reduce.toggled.connect(GameState.set_reduced_flash)
 	body.add_child(reduce)
+	var touch_mode_btn := _button(_touch_pref_label())
+	touch_mode_btn.name = "TouchControlsPreference"
+	touch_mode_btn.position = Vector2(30, 274)
+	touch_mode_btn.custom_minimum_size = Vector2(205, 31)
+	touch_mode_btn.size = Vector2(205, 31)
+	touch_mode_btn.pressed.connect(func():
+		var order := ["auto", "on", "off"]
+		var idx := (order.find(GameState.touch_controls_preference) + 1) % order.size()
+		GameState.set_touch_controls_preference(order[idx])
+		touch_mode_btn.text = _touch_pref_label()
+	)
+	body.add_child(touch_mode_btn)
 	var close := _button("返回")
 	close.position = Vector2(255, 274)
 	close.pressed.connect(_cancel_notice)
 	body.add_child(close)
 	close.call_deferred("grab_focus")
+
+func _touch_pref_label() -> String:
+	var label_map := {"auto": "触屏按键：自动", "on": "触屏按键：常显", "off": "触屏按键：隐藏"}
+	return label_map.get(GameState.touch_controls_preference, "触屏按键：自动")
 
 func _add_masthead() -> void:
 	_caption(self, "取材自澳门都市传说", Vector2(73, 51), 12, Color("c9aa72"))

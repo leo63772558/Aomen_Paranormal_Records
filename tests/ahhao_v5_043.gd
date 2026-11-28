@@ -45,6 +45,10 @@ func run() -> void:
 		get_tree().paused = false
 		get_tree().quit(1 if failed else 0)
 		return
+	for _frame in range(240):
+		if scene.hud.panel_open:
+			break
+		await get_tree().process_frame
 	check(GameState.current_role == "ah_hao" and GameState.stamina == 100.0, "role_changes_without_consuming_dawen_stamina")
 	check(scene.player.appearance == "ah_hao" and scene.hud.panel_open, "distinct_ahhao_sprite_and_intro")
 	await shot("ahhao_intro_043")
@@ -73,13 +77,19 @@ func run() -> void:
 	check(scene.phase == "reunion" and GameState.opening_flags.ah_hao_escaped, "first_escape_reaches_reunion")
 	await shot("ahhao_reunion_043")
 	scene._close_panel()
-	await get_tree().create_timer(2.4, true).timeout
+	for _frame in range(480):
+		if GameState.opening_flags.ah_hao_dead and scene.hud.panel_open:
+			break
+		await get_tree().process_frame
 	check(GameState.opening_flags.ah_hao_dead and GameState.current_role == "dawen", "ambush_commits_role_change")
 	check(GameState.has_demo_item("ahhao_camera"), "visible_retrieval_retains_ahhao_camera")
 	check(is_equal_approx(GameState.stamina, 61.0), "dawen_stamina_restored")
 	await shot("ahhao_fallen_043")
 	scene._close_panel()
-	await frames()
+	for _frame in range(240):
+		if scene.phase == "dawen_flee":
+			break
+		await get_tree().process_frame
 	check(scene.phase == "dawen_flee" and scene.player.appearance == "flashlight", "dawen_is_playable_after_loss")
 	check(scene.get_node_or_null("AhHaoFallenBodyCollision") != null, "fallen_body_has_collision")
 	await shot("dawen_escape_043")

@@ -10,7 +10,7 @@ func _enter_tree() -> void:
 		get_window().position = Vector2i(-32000, -32000)
 
 func _ready() -> void:
-	get_tree().create_timer(40, true).timeout.connect(func(): get_tree().quit(2))
+	get_tree().create_timer(115, true).timeout.connect(func(): get_tree().quit(2))
 	call_deferred("run")
 
 func frames(n := 4) -> void:
@@ -26,6 +26,25 @@ func shot(label: String) -> void:
 	await frames()
 	await RenderingServer.frame_post_draw
 	check(get_viewport().get_texture().get_image().save_png("res://docs/build_reports/" + label + ".png") == OK, label)
+
+func walk_aisle(x: float) -> void:
+	var action := "move_right" if scene.player.position.x < x else "move_left"
+	Input.action_press(action)
+	for _frame in range(600):
+		await get_tree().physics_frame
+		if absf(scene.player.position.x - x) <= 3.0:
+			break
+	Input.action_release(action)
+	await frames(5)
+	check(absf(scene.player.position.x - x) <= 4.0, "walked to interaction position %d" % x)
+
+func tap_action(action: String) -> void:
+	for down in [true, false]:
+		var event := InputEventAction.new()
+		event.action = action
+		event.pressed = down
+		Input.parse_input_event(event)
+		await frames(2)
 
 func run() -> void:
 	check(GameState.profile == "test", "isolated_profile")
@@ -96,13 +115,21 @@ func run() -> void:
 	journal_event.pressed = true
 	Input.parse_input_event(journal_event)
 	await frames(3)
-	check(scene.hud.archive_page == "journal" and "连续五次" in scene.hud.default_phone_widget.detail.text and get_tree().paused, "J keeps the bus notice in the evidence journal")
+	check(scene.hud.archive_page == "journal" and "连续五次" in scene.hud.default_phone_widget.detail.text and get_tree().paused, "J keeps the five-round bus notice in the evidence journal")
+	var notice: RichTextLabel = scene.hud.default_phone_widget.detail
+	check(notice.get_content_height() <= notice.size.y and notice.text.ends_with("侧窗外只有灯影和雾。"), "journal fits all five normal-carriage references without scrolling")
 	await shot("formal_bus_journal")
 	Input.parse_input_event(journal_event.duplicate())
 	await frames(3)
 	check(not get_tree().paused and scene.player.controls_enabled, "journal returns to the active pass")
 	GameState.reduced_flash = true
 	scene.force_cycle("stop_screen")
+	await frames(4)
+	check(scene.hud.state_text.text.is_empty(), "the rear of the bus does not reveal the report before inspection")
+	scene.player.position = Vector2(910, 273)
+	scene.camera.reset_smoothing()
+	await frames(4)
+	check("枉死坡" in scene.hud.state_text.text, "the report caption is available at the screen")
 	for i in range(12):
 		scene._refresh_broadcast_display()
 		if not scene.led_panel.visible:
@@ -171,16 +198,30 @@ func run() -> void:
 	await frames(8)
 	check(scene.hud.panel_open and "枉死坡" in scene.hud.panel_body.text and scene.success_counter == 0, "re-entering after a missed anomaly preserves the exact failure feedback")
 	scene._on_hud_close()
-	for anomaly in ["driver_mirror", "blood_coinbox", "stop_screen", "window_hands", ""]:
+	check(scene.ANOMALIES == ["driver_mirror", "blood_coinbox", "stop_screen", "mannequin_turn", "window_hands"], "formal pool has the approved five anomalies")
+	for anomaly in ["", "driver_mirror", "blood_coinbox", "stop_screen", "window_hands"]:
 		scene.force_cycle(anomaly)
-		if anomaly.is_empty(): scene.trigger_action("front_door")
+		if anomaly.is_empty():
+			await walk_aisle(1172.0)
 		else:
-			scene.trigger_action("bell_cord")
-			scene.trigger_action("rear_door")
-		if scene.success_counter < 5: await get_tree().create_timer(1.3, true).timeout
+			var observation_x: float = {"driver_mirror": 1028.0, "blood_coinbox": 1080.0, "stop_screen": 945.0, "window_hands": 460.0}[anomaly]
+			await walk_aisle(observation_x)
+			await shot("formal_bus_walk_" + anomaly)
+			await tap_action("interact")
+			check(scene.hud.panel_open, "can inspect " + anomaly + " from the walking lane")
+			await tap_action("pause")
+			await walk_aisle(222.0)
+			await tap_action("interact")
+			await walk_aisle(90.0)
+		await tap_action("interact")
+		if scene.success_counter < scene.TARGET_SUCCESSES: await get_tree().create_timer(1.3, true).timeout
 	await get_tree().create_timer(2.0, true).timeout
 	check(scene.success_counter == 5 and GameState.opening_flags.bus_arrived and scene.hud.panel_open, "five_consecutive_choices_reach_crash")
 	check(GameState.bus_loop_state.successes == 5, "completed_loop_stored_for_resume")
+	check(is_instance_valid(scene.crash_view) and scene.crash_view.size == get_viewport().get_visible_rect().size, "first-person crash art fills the viewport")
+	await shot("formal_bus_crash_nov23")
+	await tap_action("pause")
+	check(GameState.current_room_id == "ch4_bus_loop" and scene.hud.panel_open, "Escape does not choose a crash outcome")
 	get_tree().paused = false
 	scene.queue_free()
 	await frames(8)

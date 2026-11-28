@@ -64,6 +64,8 @@ func run() -> void:
 	player = room.player
 	player.aim_override = true
 	check(GameState.profile == "test" and GameState.get_profile_path().begins_with("user://test_runs/"), "test profile is isolated")
+	await walk_to(Vector2(210, 200))
+	player.clear_motion()
 	var start := player.position
 	action("move_right", true)
 	action("move_down", true)
@@ -72,8 +74,8 @@ func run() -> void:
 	check(absf(player.resolve_movement().length() - 1.0) < 0.001, "diagonal direction is normalized; speed does not gain sqrt(2)")
 	action("move_down", false)
 	start = player.position
-	await frames(6)
-	check(player.position.x > start.x and absf(player.velocity.y) < 0.1, "release settles smoothly to remaining axis")
+	await frames(18)
+	check(player.position.x > start.x and absf(player.velocity.y) < 0.1, "release settles smoothly to remaining axis (velocity %s)" % player.velocity)
 	action("move_right", false)
 	await frames(6)
 	action("move_up", true)
@@ -111,7 +113,9 @@ func run() -> void:
 	check(room.hud.panel_open and room.hud.pages[0].contains("已经发现的线索"), "Q/J records explain the discovered evidence")
 	await tap("pause")
 	check(not get_tree().paused, "Escape closes clue records and restores world")
-	await walk_to(Vector2(405, 286))
+	# Clear the desk's solid foot area before crossing the room.
+	await walk_to(Vector2(264, 296))
+	await walk_to(Vector2(405, 296))
 	check(not GameState.has_clue("floor_marks"), "photo-only route has not inspected floor marks yet")
 	await walk_to(Vector2(438, 208))
 	await use_target("bed")

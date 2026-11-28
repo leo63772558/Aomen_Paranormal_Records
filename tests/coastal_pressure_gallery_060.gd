@@ -181,6 +181,7 @@ func run() -> void:
 		push_error("FAIL pressure gallery regression requires --profile=test and --checkpoint-qa")
 		get_tree().quit(1)
 		return
+	GameState.legacy_coastal_qa = true
 	if "--verify-interrupt" in OS.get_cmdline_user_args():
 		GameState.prepare_opening_resume()
 		check(GameState.current_room_id == "ch5_coastal_pressure_gallery" and not GameState.opening_flags.coastal_pressure_inlet_closed, "new process restores uncommitted valve checkpoint")

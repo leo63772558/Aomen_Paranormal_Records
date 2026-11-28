@@ -12,7 +12,8 @@ var ambience: CanvasModulate
 var ceiling_light: PointLight2D
 var switch_arm: Sprite2D
 var grille: Sprite2D
-var exit_sign: Label
+var exit_sign: PointLight2D
+var exit_beacon: PointLight2D
 var dawen_npc: PlayerController
 var corpse: Sprite2D
 var caught_layer: CanvasLayer
@@ -23,6 +24,7 @@ var snapshots: Dictionary = {}
 
 func _ready() -> void:
 	GameState.prepare_opening_resume()
+	AudioManager.set_scene_ambience("crypt")
 	preview = GameState.pending_entry_id == "arrival"
 	GameState.enter_role("dawen" if GameState.opening_flags.ah_hao_dead else "ah_hao")
 	_build_room()
@@ -43,7 +45,18 @@ func _ready() -> void:
 		player.position = Vector2(532, 260)
 		_say("闸箱旁", "补光灯还亮着，退路在左边楼梯口！绕开鞋架冲过去！", _start_ah_chase)
 	else:
+		await _show_role_card("黄梓豪（阿豪）", "福荣里唐楼 · 二楼半", Color("9be0b4"))
+		if not is_inside_tree(): return
 		_say("二楼半 · 阿豪", "我姐先上 304 了。这走廊阴冷得吓人……快去右边合上备用闸刀，回楼梯口找姐夫。")
+
+func _show_role_card(role: String, location: String, accent := Color("e4d6b4")) -> void:
+	transition_busy = true
+	player.controls_enabled = false
+	player.clear_motion()
+	var card := preload("res://core/components/role_switch_transition.gd").play(self, "视角切换 · " + role, location, accent)
+	if card != null:
+		await card.completed
+	transition_busy = false
 
 func _build_room() -> void:
 	var background := Sprite2D.new()
@@ -88,20 +101,21 @@ func _build_room() -> void:
 	grille.scale = Vector2.ONE * (57.0 / grille.texture.get_width())
 	grille.z_index = 20
 	add_child(grille)
-	for entry in [["备用闸", Vector2(520, 205)], ["304", Vector2(470, 95)]]:
-		var label := Label.new()
-		label.text = entry[0]
-		label.position = entry[1]
-		label.add_theme_font_size_override("font_size", 9)
-		label.add_theme_color_override("font_color", Color("b8b391"))
-		add_child(label)
-	exit_sign = Label.new()
-	exit_sign.text = "楼梯口  ←"
-	exit_sign.position = Vector2(66, 184)
-	exit_sign.add_theme_font_size_override("font_size", 11)
-	exit_sign.add_theme_color_override("font_color", Color("dfc992"))
-	exit_sign.modulate.a = 0.25
+	# Soft emerald safety-exit glow at the left stairwell (no intrusive floating Chinese labels on doors)
+	exit_sign = PointLight2D.new()
+	exit_sign.position = Vector2(86, 178)
+	exit_sign.texture = preload("res://assets/lighting/soft_light.png")
+	exit_sign.texture_scale = 0.72
+	exit_sign.color = Color("5fe08c")
+	exit_sign.energy = 0.28
 	add_child(exit_sign)
+	exit_beacon = PointLight2D.new()
+	exit_beacon.position = Vector2(548, 175)
+	exit_beacon.texture = preload("res://assets/lighting/soft_light.png")
+	exit_beacon.texture_scale = 0.32
+	exit_beacon.color = Color("f2cf84")
+	exit_beacon.energy = 0.38 if not GameState.opening_flags.ah_hao_breaker_done else 0.0
+	add_child(exit_beacon)
 	for at in [BREAKER, AH_EXIT, DAWEN_EXIT]:
 		var area := Area2D.new()
 		area.position = at
@@ -135,7 +149,10 @@ func _process(delta: float) -> void:
 	if not is_instance_valid(hud) or hud.panel_open or transition_busy: return
 	var to_exit := AH_EXIT - player.position
 	var sees_exit := player.flashlight_on and to_exit.length() < 256.0 and player.look_dir.dot(to_exit.normalized()) > 0.86
-	exit_sign.modulate.a = move_toward(exit_sign.modulate.a, 1.0 if sees_exit or phase == "ah_chase" else 0.25, delta * 4.0)
+	var exit_pulse := 0.95 + 0.35 * sin(animation_clock * 7.5) if phase == "ah_chase" else (0.72 if sees_exit else 0.24)
+	exit_sign.energy = move_toward(exit_sign.energy, exit_pulse, delta * 3.5)
+	if is_instance_valid(exit_beacon):
+		exit_beacon.energy = (0.34 + 0.22 * sin(animation_clock * 3.6)) if phase == "explore" else 0.0
 	var target := BREAKER if phase == "explore" else (AH_EXIT if phase == "ah_chase" else DAWEN_EXIT)
 	hud.prompt.text = ""
 	if phase in ["explore", "ah_chase", "dawen_flee"] and player.position.distance_to(target) < 43:
@@ -184,9 +201,26 @@ func _start_ah_chase() -> void:
 	phase = "ah_chase"
 	player.controls_enabled = true
 	player.clear_motion()
+	AudioManager.play_voice("ahhao_chase_panic", -1.5)
 	_spawn_monster(Vector2(582, 260), 125.0)
 	monster.active = false
-	hud.notify("闸箱后传来拖拽声。它已经进了过道——左边就是退路。")
+	hud.notify("闸箱后传来沉重拖拽声！左侧安全灯亮了——快向左冲出楼梯口！")
+	# Sequential right-to-left flashing guide lamps leading the player unambiguously left!
+	if not GameState.reduced_flash:
+		for idx in range(4):
+			var lx := 470.0 - idx * 115.0
+			var guide := PointLight2D.new()
+			guide.position = Vector2(lx, 188)
+			guide.texture = preload("res://assets/lighting/soft_light.png")
+			guide.texture_scale = 0.65
+			guide.color = Color("6be696")
+			guide.energy = 0.0
+			add_child(guide)
+			var gtw := guide.create_tween()
+			gtw.tween_interval(idx * 0.14)
+			gtw.tween_property(guide, "energy", 0.95, 0.12)
+			gtw.tween_property(guide, "energy", 0.0, 0.45)
+			gtw.tween_callback(guide.queue_free)
 	await get_tree().create_timer(0.75, false).timeout
 	if phase == "ah_chase" and is_instance_valid(monster): monster.active = true
 
@@ -217,6 +251,7 @@ func _escape_ah() -> void:
 
 func _quiet_reunion() -> void:
 	phase = "reunion"
+	hud.objective.text = ""
 	player.position = Vector2(190, 260)
 	player.controls_enabled = false
 	if not is_instance_valid(dawen_npc):
@@ -235,48 +270,61 @@ func _ambush() -> void:
 	transition_busy = true
 	player.controls_enabled = false
 	player.clear_motion()
-	# Omen: falling dust & flickering ceiling light before the vent grille bursts open.
-	for i in range(6):
+	# Omen: ceiling light sputters out, dust falls, vent violently snaps, emergency crimson strobe!
+	for i in range(8):
 		var dust := ColorRect.new()
-		dust.size = Vector2(3, 3)
-		dust.color = Color(0.75, 0.72, 0.62, 0.85)
-		dust.position = Vector2(168 + i * 6, 86)
+		dust.size = Vector2(2, 2)
+		dust.color = Color(0.72, 0.68, 0.58, 0.80)
+		dust.position = Vector2(166 + i * 5, 86)
 		dust.z_index = 490
 		add_child(dust)
 		var dtw := create_tween()
-		dtw.tween_property(dust, "position:y", 238.0, 0.22 + i * 0.02)
-		dtw.parallel().tween_property(dust, "modulate:a", 0.0, 0.24)
+		dtw.tween_property(dust, "position:y", 242.0, 0.24 + i * 0.02)
+		dtw.parallel().tween_property(dust, "modulate:a", 0.0, 0.26)
 		dtw.tween_callback(dust.queue_free)
 	if is_instance_valid(ceiling_light):
-		ceiling_light.energy = 0.15
+		ceiling_light.energy = 0.06
+	AudioManager.play_world_effect("scare_bulb_pop")
+	var dur_scale := 2.35
 	var shake := create_tween()
-	shake.tween_property(grille, "rotation", 0.055, 0.10)
-	shake.tween_property(grille, "rotation", -0.048, 0.10)
-	shake.tween_property(grille, "rotation", 0.0, 0.12)
+	shake.tween_property(grille, "rotation", 0.08, 0.09 * dur_scale)
+	shake.tween_property(grille, "rotation", -0.07, 0.09 * dur_scale)
+	shake.tween_property(grille, "rotation", 0.05, 0.08 * dur_scale)
+	shake.tween_property(grille, "rotation", 0.0, 0.10 * dur_scale)
 	await shake.finished
 	if not is_inside_tree(): return
-	if is_instance_valid(ceiling_light):
-		ceiling_light.energy = 0.65
-	AudioManager.play_world_effect("metal_cover")
+	AudioManager.play_world_effect("iron_slam")
 	grille.texture = _hardware(3)
-	var arm := Sprite2D.new()
-	arm.texture = _part(Rect2(24, 832, 584, 396))
-	arm.position = Vector2(182, 110)
-	arm.scale = Vector2(0.03, 0.03)
-	arm.rotation = PI * 0.5
-	arm.z_index = 500
-	add_child(arm)
+	# Realistic tragic horror ambush: bulbs burst, dark corridor entity materializes from the extinguished shadow
+	# as Ah Hao shoves his camera & fill light toward Dawen to hold the gate!
+	GhostTaunt.materialize_from_shadow(self, Vector2(215, 232))
+	var pounce := Sprite2D.new()
+	var stalk_tex := preload("res://assets/characters/wardrobe_stalker_v5.png")
+	var at := AtlasTexture.new()
+	at.atlas = stalk_tex
+	at.region = Rect2(stalk_tex.get_width() * 0.5, stalk_tex.get_height() * 0.5, stalk_tex.get_width() * 0.5, stalk_tex.get_height() * 0.5)
+	pounce.texture = at
+	pounce.scale = Vector2(0.14, 0.14)
+	pounce.position = Vector2(258, 220)
+	pounce.modulate = Color(0.75, 0.72, 0.76, 0.0)
+	pounce.z_index = 500
+	add_child(pounce)
+	hud.notify("阿豪：“哥！顶灯全炸了——快拿好相机冲进 304！我顶住铁门！”")
 	var thrust := create_tween()
-	thrust.tween_property(arm, "scale", Vector2(0.22, 0.22), 0.16).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	thrust.parallel().tween_property(arm, "position", Vector2(182, 198), 0.16)
+	thrust.tween_property(pounce, "modulate:a", 0.96, 0.22 * dur_scale)
+	thrust.tween_property(pounce, "position", Vector2(226, 223), 0.28 * dur_scale).set_trans(Tween.TRANS_SINE)
+	thrust.tween_property(pounce, "position", Vector2(198, 226), 0.26 * dur_scale).set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_IN)
+	thrust.parallel().tween_property(pounce, "scale", pounce.scale * 1.38, 0.26 * dur_scale)
 	await thrust.finished
 	if not is_instance_valid(player): return
 	AudioManager.play_world_effect("capture_hit")
-	AudioManager.play_world_effect("jumpscare_shriek")
+	AudioManager.play_world_effect("jumpscare_wraith")
+	_spawn_ambush_blood_splatter(Vector2(198, 224))
 	if not GameState.reduced_flash and is_instance_valid(ambience):
-		ambience.color = Color("a8423b")
+		ambience.color = Color("b52622")
 		var flash_tw := create_tween()
-		flash_tw.tween_property(ambience, "color", Color("89968b"), 0.28)
+		flash_tw.tween_property(ambience, "color", Color("1f2622"), 0.24 * dur_scale)
+		flash_tw.tween_property(ambience, "color", Color("89968b"), 0.34 * dur_scale)
 	player.sprite.hide()
 	player.lamp.enabled = false
 	var stagger := Sprite2D.new()
@@ -286,10 +334,13 @@ func _ambush() -> void:
 	stagger.z_index = 261
 	add_child(stagger)
 	var fall := create_tween()
-	fall.tween_property(stagger, "rotation", 0.21, 0.20).set_trans(Tween.TRANS_CUBIC)
-	fall.parallel().tween_property(stagger, "position", Vector2(201, 234), 0.27)
-	fall.parallel().tween_property(arm, "position:y", 145.0, 0.35)
-	fall.tween_property(stagger, "modulate:a", 0.0, 0.20)
+	fall.tween_property(stagger, "rotation", -0.08, 0.16 * dur_scale).set_trans(Tween.TRANS_SINE)
+	fall.tween_property(stagger, "rotation", 0.22, 0.28 * dur_scale).set_trans(Tween.TRANS_CUBIC)
+	fall.parallel().tween_property(stagger, "position", Vector2(201, 234), 0.34 * dur_scale)
+	fall.parallel().tween_property(pounce, "modulate:a", 0.0, 0.42 * dur_scale)
+	fall.parallel().tween_property(pounce, "position:y", 112.0, 0.42 * dur_scale)
+	fall.tween_interval(0.18 * dur_scale)
+	fall.tween_property(stagger, "modulate:a", 0.0, 0.24 * dur_scale)
 	corpse = Sprite2D.new()
 	corpse.texture = _part(Rect2(515, 382, 739, 281))
 	corpse.position = Vector2(203, 258)
@@ -297,14 +348,11 @@ func _ambush() -> void:
 	corpse.modulate.a = 0.0
 	corpse.z_index = 220
 	add_child(corpse)
-	fall.parallel().tween_property(corpse, "modulate:a", 1.0, 0.2)
+	fall.parallel().tween_property(corpse, "modulate:a", 1.0, 0.28 * dur_scale)
 	await fall.finished
 	if not is_inside_tree(): return
 	if is_instance_valid(stagger): stagger.queue_free()
-	if is_instance_valid(arm): arm.queue_free()
-	GameState.opening_flags.ah_hao_dead = true
-	GameState.enter_role("dawen")
-	checkpoint()
+	if is_instance_valid(pounce): pounce.queue_free()
 	if is_instance_valid(dawen_npc):
 		dawen_npc.hide()
 		dawen_npc.collision_layer = 0
@@ -323,19 +371,23 @@ func _ambush() -> void:
 	camera_prop.z_index = 263
 	add_child(camera_prop)
 	var retrieval := create_tween()
-	retrieval.tween_interval(0.20)
-	retrieval.tween_property(camera_prop, "position", Vector2(170, 235), 0.32).set_trans(Tween.TRANS_SINE)
-	retrieval.tween_property(camera_prop, "position", Vector2(149, 233), 0.24)
-	retrieval.parallel().tween_property(camera_prop, "modulate:a", 0.0, 0.24)
+	retrieval.tween_interval(0.20 * dur_scale)
+	retrieval.tween_property(camera_prop, "position", Vector2(170, 235), 0.32 * dur_scale).set_trans(Tween.TRANS_SINE)
+	retrieval.tween_property(camera_prop, "position", Vector2(149, 233), 0.24 * dur_scale)
+	retrieval.parallel().tween_property(camera_prop, "modulate:a", 0.0, 0.24 * dur_scale)
 	await retrieval.finished
 	if not is_inside_tree(): return
 	GameState.take_demo_item("ahhao_camera")
+	GameState.opening_flags.ah_hao_dead = true
+	GameState.enter_role("dawen")
 	if is_instance_valid(camera_prop): camera_prop.queue_free()
 	checkpoint()
 	transition_busy = false
+	AudioManager.play_voice("ahhao_dying", -1.0)
 	_say("阿豪", "「姐……姐夫……别管我……快去救我姐……」\n他死死攥着大文袖口的手滑落下去。大文颤抖着抓起他掉在地上的相机。", func():
 		help.queue_free()
-		_start_dawen_flee()
+		await _show_role_card("陈大文", "福荣里唐楼 · 304 门外")
+		if is_inside_tree(): _start_dawen_flee()
 	)
 
 func _start_dawen_flee() -> void:
@@ -344,6 +396,7 @@ func _start_dawen_flee() -> void:
 	if is_instance_valid(dawen_npc): dawen_npc.queue_free()
 	GameState.enter_role("dawen")
 	player.look_dir = Vector2.RIGHT
+	player.has_mouse_aim = false
 	player.set_appearance("flashlight")
 	player.sprite.show()
 	player.position = Vector2(133, 293)
@@ -362,6 +415,10 @@ func _start_dawen_flee() -> void:
 		body.name = "AhHaoFallenBodyCollision"
 	_spawn_monster(Vector2(103, 238), 132.0)
 	monster.active = false
+	GameState.phone_battery = maxf(GameState.phone_battery, GameState.RULES.phone_flash_cost * GameState.RULES.phone_flash_charges)
+	GameState.phone_flash_charges = GameState.RULES.phone_flash_charges
+	GameState.phone_flash_cooldown = 0.0
+	hud.notify("按住 Shift 冲向右侧 304。恶灵逼近时可以按 R 强闪。")
 	await get_tree().create_timer(0.65, false).timeout
 	if not is_inside_tree(): return
 	if phase == "dawen_flee" and is_instance_valid(monster): monster.active = true
@@ -374,28 +431,9 @@ func _caught() -> void:
 	player.controls_enabled = false
 	player.clear_motion()
 	AudioManager.stop_chase_music()
-	AudioManager.play_world_effect("capture_rush")
-	caught_layer = CanvasLayer.new()
-	caught_layer.layer = 60
-	add_child(caught_layer)
-	var root := Control.new()
-	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.mouse_filter = Control.MOUSE_FILTER_STOP
-	caught_layer.add_child(root)
-	var claw := Sprite2D.new()
-	claw.texture = _part(Rect2(24, 832, 584, 396))
-	claw.position = Vector2(750, 180)
-	claw.scale = Vector2(0.48, 0.48)
-	claw.flip_h = true
-	root.add_child(claw)
-	var catch_motion := create_tween()
-	catch_motion.tween_property(claw, "position", Vector2(360, 180), 0.32).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	catch_motion.parallel().tween_property(claw, "scale", Vector2(1.12, 1.12), 0.42)
-	await catch_motion.finished
-	AudioManager.play_world_effect("capture_hit")
-	await get_tree().create_timer(0.35, false).timeout
+	# Full painted-pixel HK horror face lunge (ZERO reaching claw hand!)
+	await DemoCaptureAnimation.play_on(self, DemoCaptureAnimation.RANGER_PATH)
 	if not is_inside_tree() or not is_instance_valid(player): return
-	if is_instance_valid(caught_layer): caught_layer.queue_free()
 	transition_busy = false
 	_say("还没到门口", "身后追得很近。沿过道先绕开实体障碍，冲刺时不要停在柜脚前。\n\n这次从追逐前的安全位置重试。", _retry.bind(retry_phase))
 
@@ -433,6 +471,69 @@ func _continue_main(room_id := "ch0_room304", entry_id := "from_ah_escape") -> v
 	else:
 		_say("暂时无法进入 304", "房间暂时没有载入成功。大文仍在门边，稍后可继续重试。", _continue_main)
 
+func _spawn_ambush_blood_splatter(origin: Vector2) -> void:
+	# Arterial directional blood spray + persistent spreading crimson pool around Ah Hao's ambush site
+	var spray := CPUParticles2D.new()
+	spray.position = origin + Vector2(0, -14)
+	spray.z_index = 265
+	spray.one_shot = true
+	spray.explosiveness = 0.94
+	spray.amount = 34
+	spray.lifetime = 0.68
+	spray.direction = Vector2(-0.55, -0.35)
+	spray.spread = 115.0
+	spray.gravity = Vector2(0, 260.0)
+	spray.initial_velocity_min = 65.0
+	spray.initial_velocity_max = 185.0
+	spray.scale_amount_min = 2.0
+	spray.scale_amount_max = 4.6
+	spray.color = Color("b61515")
+	spray.emitting = true
+	add_child(spray)
+	var mist := CPUParticles2D.new()
+	mist.position = origin + Vector2(4, -8)
+	mist.z_index = 264
+	mist.one_shot = true
+	mist.explosiveness = 0.9
+	mist.amount = 24
+	mist.lifetime = 0.52
+	mist.direction = Vector2(0.45, -0.45)
+	mist.spread = 140.0
+	mist.gravity = Vector2(0, 140.0)
+	mist.initial_velocity_min = 38.0
+	mist.initial_velocity_max = 115.0
+	mist.scale_amount_min = 2.5
+	mist.scale_amount_max = 5.5
+	mist.color = Color(0.45, 0.03, 0.04, 0.85)
+	mist.emitting = true
+	add_child(mist)
+	# Persistent dark-crimson spreading floor pool & wall splashes visible during Dawen's escape
+	if get_node_or_null("AmbushBloodPool") == null:
+		var pool := Polygon2D.new()
+		pool.name = "AmbushBloodPool"
+		pool.position = Vector2(201, 263)
+		pool.z_index = 216
+		pool.polygon = PackedVector2Array([
+			Vector2(-28, 2), Vector2(-18, -7), Vector2(4, -9), Vector2(28, -5),
+			Vector2(36, 3), Vector2(22, 10), Vector2(-6, 11), Vector2(-24, 7)
+		])
+		pool.color = Color(0.38, 0.025, 0.025, 0.88)
+		pool.scale = Vector2(0.18, 0.18)
+		add_child(pool)
+		var sheen := Polygon2D.new()
+		sheen.polygon = PackedVector2Array([Vector2(-12, -2), Vector2(10, -4), Vector2(16, 1), Vector2(-4, 4)])
+		sheen.color = Color(0.68, 0.08, 0.07, 0.45)
+		pool.add_child(sheen)
+		var ptw := create_tween()
+		ptw.tween_property(pool, "scale", Vector2(1.15, 1.05), 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	for sp_pos in [Vector2(174, 240), Vector2(228, 246), Vector2(186, 256)]:
+		var splash := Polygon2D.new()
+		splash.position = sp_pos
+		splash.z_index = 217
+		splash.polygon = PackedVector2Array([Vector2(-7, -2), Vector2(2, -5), Vector2(9, 0), Vector2(4, 5), Vector2(-5, 3)])
+		splash.color = Color(0.48, 0.03, 0.03, 0.78)
+		add_child(splash)
+
 func _say(title: String, body: String, after := Callable()) -> void:
 	after_panel = after
 	player.controls_enabled = false
@@ -441,6 +542,7 @@ func _say(title: String, body: String, after := Callable()) -> void:
 	get_tree().paused = true
 
 func _close_panel() -> void:
+	AudioManager.stop_voice()
 	hud.close_panel()
 	get_tree().paused = false
 	player.controls_enabled = not transition_busy and phase in ["explore", "ah_chase", "dawen_flee"]

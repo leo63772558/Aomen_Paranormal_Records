@@ -45,7 +45,7 @@ func _ready() -> void:
 	if not GameState.opening_flags.coastal_chamber_route_verified:
 		push_error("The silt tunnel requires the evidence-verified chamber route.")
 		return
-	AudioManager.set_scene_ambience("crypt")
+	AudioManager.set_scene_ambience("coastal")
 	_build_background()
 	_build_geometry()
 	if not GameState.opening_flags.silt_spare_battery_taken:
@@ -55,7 +55,18 @@ func _ready() -> void:
 		add_child(spare_battery)
 	_build_route_mark()
 	_build_hotspots()
-	preload("res://ui/coastal_route_panel.gd").marker(self, "工事图", Vector2(708, 211))
+	# Subtle light glint on the wall blueprint instead of floating world text label
+	var map_glint := PointLight2D.new()
+	map_glint.name = "BlueprintGlint"
+	map_glint.position = Vector2(708, 211)
+	map_glint.texture = preload("res://assets/lighting/soft_light.png")
+	map_glint.texture_scale = 0.24
+	map_glint.color = Color("ffe6a8")
+	map_glint.energy = 0.34
+	add_child(map_glint)
+	var glint_tw := create_tween().set_loops()
+	glint_tw.tween_property(map_glint, "energy", 0.58, 0.9).set_trans(Tween.TRANS_SINE)
+	glint_tw.tween_property(map_glint, "energy", 0.22, 0.9).set_trans(Tween.TRANS_SINE)
 	player = preload("res://entities/player/player.tscn").instantiate()
 	player.visual_size_multiplier = 1.85
 	match GameState.pending_entry_id:
@@ -128,17 +139,10 @@ func _build_geometry() -> void:
 	_wall(Rect2(296, 414, 101, 62))
 
 func _build_route_mark() -> void:
+	# Removed cartoon vector line per visual quality polish; keep hidden node ref for compatibility
 	route_mark = Line2D.new()
 	route_mark.name = "VerifiedDryRoute"
-	route_mark.points = PackedVector2Array([
-		Vector2(592, 555), Vector2(520, 492), Vector2(476, 420),
-		Vector2(428, 354), Vector2(386, 309), Vector2(347, 278)
-	])
-	route_mark.width = 2.4
-	route_mark.default_color = Color("c5b995", 0.72)
-	route_mark.antialiased = true
-	route_mark.z_index = -3
-	route_mark.visible = GameState.opening_flags.coastal_silt_route_verified
+	route_mark.visible = false
 	add_child(route_mark)
 
 func _build_hotspots() -> void:
@@ -250,7 +254,7 @@ func _confirm_arch() -> void:
 	checkpoint()
 
 func _open_record() -> void:
-	_say("手札 · 淤泥岔口", _journal_text())
+	_say("现场线索 · 淤泥岔口", _journal_text())
 
 func _journal_text() -> String:
 	var lines: Array[String] = ["沿海工事 · 淤泥岔口记录", ""]
@@ -268,13 +272,13 @@ func _journal_text() -> String:
 func _update_objective() -> void:
 	if not is_instance_valid(hud):
 		return
-	hud.state_text.text = "淤泥岔口     [ J ] 手札"
+	hud.state_text.text = "淤泥岔口     [ B ] 线索"
 	if GameState.opening_flags.coastal_silt_route_verified:
 		hud.objective.text = "中央干路已核实。走入拱道继续，或返回闸室。"
 	elif _all_evidence_seen():
 		hud.objective.text = "到中央拱口，核对红线与地面擦痕。"
 	else:
-		hud.objective.text = "往墙上图框走可查看旧图，或沿粉笔箭头穿过左边的小拱门。"
+		hud.objective.text = "往墙上图框走可查看旧图，或沿干燥鞋印穿过左边的小拱门。"
 
 func _open_widget(control: Control) -> void:
 	widget = control
@@ -371,7 +375,8 @@ func _enter_pressure_gallery() -> void:
 	await tween.finished
 	if not is_inside_tree(): return
 	if GameState.request_room_change("ch5_coastal_pressure_gallery", "from_silt_tunnel"):
-		GameState.save_transition_checkpoint()
+		if GameState.opening_flags.coastal_pressure_intro_seen:
+			GameState.save_transition_checkpoint()
 	else:
 		layer.queue_free()
 		transition_active = false

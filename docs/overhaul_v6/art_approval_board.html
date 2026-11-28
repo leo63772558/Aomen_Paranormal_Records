@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>《澳诡实录》V6 新美术预览与审批画廊</title>
+<style>
+  :root { --bg:#0b110e; --panel:#131d18; --card:#18251f; --border:#3d5044; --gold:#ebd494; --text:#e4e7d8; --muted:#95a89b; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px 18px 96px; background:radial-gradient(circle at top, #17241e 0%, var(--bg) 65%); color:var(--text); font-family:"Microsoft YaHei","SimSun",sans-serif; }
+  .wrap { max-width:1080px; margin:0 auto; }
+  header { border:1px solid var(--gold); background:rgba(20,31,26,0.96); padding:20px 24px; border-radius:6px; margin-bottom:20px; }
+  h1 { margin:0 0 8px; color:var(--gold); font-size:22px; }
+  .lead { margin:0; color:var(--muted); font-size:14px; }
+  .art-card { background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:18px 20px; margin-bottom:20px; }
+  h2 { margin:0 0 6px; color:var(--gold); font-size:17px; }
+  .desc { margin:0 0 4px; font-size:14px; }
+  .subnote { margin:0 0 12px; font-size:12px; color:#a4bca9; }
+  .compare-row { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start; }
+  .img-box { position:relative; background:#090e0b; border:1px solid #2c3d32; border-radius:5px; padding:8px; max-width:260px; }
+  .img-box.grow { flex:1; min-width:300px; max-width:none; }
+  .img-box img { display:block; width:100%; max-height:360px; object-fit:contain; border-radius:3px; }
+  .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:3px; margin-bottom:6px; font-weight:600; }
+  .tag.old { background:#3d2a28; color:#f0b8ae; }
+  .tag.new { background:#274a35; color:#bdebc9; }
+  .controls { margin-top:14px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .radio-btn { background:var(--card); border:1px solid #35473c; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:6px; }
+  .radio-btn:has(input:checked) { border-color:var(--gold); background:#23382c; color:var(--gold); }
+  .art-note { flex:1; min-width:240px; padding:7px 10px; background:#0f1713; border:1px solid #384a3e; border-radius:4px; color:var(--text); font-size:13px; }
+  .sticky-bar { position:fixed; left:0; right:0; bottom:0; background:rgba(10,16,13,0.96); border-top:1px solid var(--gold); padding:12px 24px; display:flex; justify-content:center; align-items:center; gap:16px; z-index:99; }
+  button.primary { background:#3d5c45; color:var(--gold); border:1px solid var(--gold); padding:10px 22px; font-size:14px; font-weight:600; border-radius:4px; cursor:pointer; }
+  #status { font-size:13px; color:#a7e0b3; }
+  pre#preview { background:#0b110e; border:1px solid var(--border); padding:14px; border-radius:4px; font-size:12px; color:#d6e4c9; white-space:pre-wrap; display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>《澳诡实录》V6 新美术对比预览与审批画廊</h1>
+    <p class="lead">以上 7 组新图均未覆盖正式游戏资产。请逐组审看清晰度、恐怖感与日恐手绘风格是否一致，勾选审核意见后点底部按钮复制发回给我。</p>
+  </header>
+  
+    <section class="art-card" data-id="dawen_portrait" data-title="1. 男主陈大文 · 高清立绘（对齐嘉敏清晰度）">
+      <div class="card-head">
+        <h2>1. 男主陈大文 · 高清立绘（对齐嘉敏清晰度）</h2>
+        <p class="desc">替换原本偏糊的 dawen_portrait_004.png。24 岁香港电气检修青年，经典日恐厚涂像素质感，冷暗绿阴影。</p>
+        <p class="subnote">实装说明：定稿后将同步据此高清风格重绘大文八方向行走图。</p>
+      </div>
+      <div class="compare-row">
+        
+        <div class="img-box">
+          <div class="tag old">旧版参考</div>
+          <img src="./art_preview/old/dawen_portrait_old.png" alt="old" />
+        </div>
+        <div class="img-box grow">
+          <div class="tag new">V6 新版预览</div>
+          <img src="./art_preview/dawen_portrait_v6.png" alt="new" />
+        </div>
+      </div>
+      <div class="controls">
+        <label class="radio-btn"><input type="radio" name="verdict_dawen_portrait" value="通过，可直接拆帧/接入" /> 通过，可直接接入</label>
+        <label class="radio-btn"><input type="radio" name="verdict_dawen_portrait" value="基本可以，细节微调" /> 基本可以，细节微调</label>
+        <label class="radio-btn"><input type="radio" name="verdict_dawen_portrait" value="打回重做" /> 打回重做</label>
+        <input type="text" class="art-note" placeholder="可选修改意见（例如：大文再沧桑一点 / 断指创可贴再自然些）" />
+      </div>
+    </section>
+    
+    <section class="art-card" data-id="ahhao_portrait" data-title="2. 黄梓豪（阿豪）· 高清立绘">
+      <div class="card-head">
+        <h2>2. 黄梓豪（阿豪）· 高清立绘</h2>
+        <p class="desc">替换原本偏糊的 ahhao_portrait_252.png。19 岁挂单反相机带少年形象，经典日恐 RPG 对话半身像。</p>
+        <p class="subnote">实装说明：定稿后将同步重绘序章阿豪高清八方向行走图。</p>
+      </div>
+      <div class="compare-row">
+        
+        <div class="img-box">
+          <div class="tag old">旧版参考</div>
+          <img src="./art_preview/old/ahhao_portrait_old.png" alt="old" />
+        </div>
+        <div class="img-box grow">
+          <div class="tag new">V6 新版预览</div>
+          <img src="./art_preview/ahhao_portrait_v6.png" alt="new" />
+        </div>
+      </div>
+      <div class="controls">
+        <label class="radio-btn"><input type="radio" name="verdict_ahhao_portrait" value="通过，可直接拆帧/接入" /> 通过，可直接接入</label>
+        <label class="radio-btn"><input type="radio" name="verdict_ahhao_portrait" value="基本可以，细节微调" /> 基本可以，细节微调</label>
+        <label class="radio-btn"><input type="radio" name="verdict_ahhao_portrait" value="打回重做" /> 打回重做</label>
+        <input type="text" class="art-note" placeholder="可选修改意见（例如：大文再沧桑一点 / 断指创可贴再自然些）" />
+      </div>
+    </section>
+    
+    <section class="art-card" data-id="stair_wraith" data-title="3. 全新单只主怨灵（彻底替换丑黑脸鬼）">
+      <div class="card-head">
+        <h2>3. 全新单只主怨灵（彻底替换丑黑脸鬼）</h2>
+        <p class="desc">用于 99 级石阶与防空洞主追逐（只留 1 只高速追逼）。惨白扭曲偏长脖颈、黑长发遮脸、湿濡灰白寿衣。</p>
+        <p class="subnote">实装说明：定稿后拆帧制作八向/前后扑抓动画，并把 99 级石阶正式替换为该单只怨灵。</p>
+      </div>
+      <div class="compare-row">
+        
+        <div class="img-box">
+          <div class="tag old">旧版参考</div>
+          <img src="./art_preview/old/shadow_walk_old.png" alt="old" />
+        </div>
+        <div class="img-box grow">
+          <div class="tag new">V6 新版预览</div>
+          <img src="./art_preview/stair_wraith_v6.png" alt="new" />
+        </div>
+      </div>
+      <div class="controls">
+        <label class="radio-btn"><input type="radio" name="verdict_stair_wraith" value="通过，可直接拆帧/接入" /> 通过，可直接接入</label>
+        <label class="radio-btn"><input type="radio" name="verdict_stair_wraith" value="基本可以，细节微调" /> 基本可以，细节微调</label>
+        <label class="radio-btn"><input type="radio" name="verdict_stair_wraith" value="打回重做" /> 打回重做</label>
+        <input type="text" class="art-note" placeholder="可选修改意见（例如：大文再沧桑一点 / 断指创可贴再自然些）" />
+      </div>
+    </section>
+    
+    <section class="art-card" data-id="ahhao_wounded_99" data-title="4. 99 级石阶 · 遇害后残损阿豪（伤口与断臂一致）">
+      <div class="card-head">
+        <h2>4. 99 级石阶 · 遇害后残损阿豪（伤口与断臂一致）</h2>
+        <p class="desc">对照序章走廊被利爪扑杀的惨死部位：肩胸大片撕裂血痕、左臂残缺垂断淌血、面色青白步履蹒跚，配合多句催命哀求。</p>
+        <p class="subnote">实装说明：定稿后拆帧接入 99 级台阶，替代原本完好无伤的幻影图。</p>
+      </div>
+      <div class="compare-row">
+        
+        <div class="img-box">
+          <div class="tag old">旧版参考</div>
+          <img src="./art_preview/old/ahhao_walk_old.png" alt="old" />
+        </div>
+        <div class="img-box grow">
+          <div class="tag new">V6 新版预览</div>
+          <img src="./art_preview/ahhao_wounded_99_v6.png" alt="new" />
+        </div>
+      </div>
+      <div class="controls">
+        <label class="radio-btn"><input type="radio" name="verdict_ahhao_wounded_99" value="通过，可直接拆帧/接入" /> 通过，可直接接入</label>
+        <label class="radio-btn"><input type="radio" name="verdict_ahhao_wounded_99" value="基本可以，细节微调" /> 基本可以，细节微调</label>
+        <label class="radio-btn"><input type="radio" name="verdict_ahhao_wounded_99" value="打回重做" /> 打回重做</label>
+        <input type="text" class="art-note" placeholder="可选修改意见（例如：大文再沧桑一点 / 断指创可贴再自然些）" />
+      </div>
+    </section>
+    
+    <section class="art-card" data-id="room304_iron_tunnel" data-title="5. 304 旧照床后「老铁皮检修通道」（替代百叶木门）">
+      <div class="card-head">
+        <h2>5. 304 旧照床后「老铁皮检修通道」（替代百叶木门）</h2>
+        <p class="desc">修正你指出的“旧照后面不该是百叶木门，应是铁质通道”。斑驳锈蚀重铁门微开，露出潮湿狭窄老铁皮维护暗道。</p>
+        <p class="subnote">实装说明：Batch 3 同步更新 304 场景贴图与“铁通道/铁皮门”对应文字描述。</p>
+      </div>
+      <div class="compare-row">
+        
+        <div class="img-box grow">
+          <div class="tag new">V6 新版预览</div>
+          <img src="./art_preview/room304_iron_tunnel_v6.png" alt="new" />
+        </div>
+      </div>
+      <div class="controls">
+        <label class="radio-btn"><input type="radio" name="verdict_room304_iron_tunnel" value="通过，可直接拆帧/接入" /> 通过，可直接接入</label>
+        <label class="radio-btn"><input type="radio" name="verdict_room304_iron_tunnel" value="基本可以，细节微调" /> 基本可以，细节微调</label>
+        <label class="radio-btn"><input type="radio" name="verdict_room304_iron_tunnel" value="打回重做" /> 打回重做</label>
+        <input type="text" class="art-note" placeholder="可选修改意见（例如：大文再沧桑一点 / 断指创可贴再自然些）" />
+      </div>
+    </section>
+    
+    <section class="art-card" data-id="room304_peephole_eye" data-title="6. 304 房门外「猫眼贴眼」惊吓特写 CG">
+      <div class="card-head">
+        <h2>6. 304 房门外「猫眼贴眼」惊吓特写 CG</h2>
+        <p class="desc">门外响起异样敲门时，允许玩家互动凑近黄铜猫眼查看——一只布满血丝的苍白诡异眼睛正死死贴在猫眼外侧直视你！</p>
+        <p class="subnote">实装说明：将搭配二轮选定的高刺激惊吓音效一起接入 304 猫眼互动。</p>
+      </div>
+      <div class="compare-row">
+        
+        <div class="img-box grow">
+          <div class="tag new">V6 新版预览</div>
+          <img src="./art_preview/room304_peephole_eye_v6.png" alt="new" />
+        </div>
+      </div>
+      <div class="controls">
+        <label class="radio-btn"><input type="radio" name="verdict_room304_peephole_eye" value="通过，可直接拆帧/接入" /> 通过，可直接接入</label>
+        <label class="radio-btn"><input type="radio" name="verdict_room304_peephole_eye" value="基本可以，细节微调" /> 基本可以，细节微调</label>
+        <label class="radio-btn"><input type="radio" name="verdict_room304_peephole_eye" value="打回重做" /> 打回重做</label>
+        <input type="text" class="art-note" placeholder="可选修改意见（例如：大文再沧桑一点 / 断指创可贴再自然些）" />
+      </div>
+    </section>
+    
+    <section class="art-card" data-id="ch3_butcher_evidence" data-title="7. 第三章肉铺 · 断手叉烧包血盆 &amp; 嘉敏带尾戒断指证物图">
+      <div class="card-head">
+        <h2>7. 第三章肉铺 · 断手叉烧包血盆 &amp; 嘉敏带尾戒断指证物图</h2>
+        <p class="desc">左侧：生锈搪瓷血盆里的血污叉烧包、破烂邮差绿制服与断手；右侧：带着银色尾戒与带血创可贴的嘉敏断指核心证物。</p>
+        <p class="subnote">实装说明：将在 Batch 4 第三章肉铺重构与序章尾戒伏笔中实装。</p>
+      </div>
+      <div class="compare-row">
+        
+        <div class="img-box grow">
+          <div class="tag new">V6 新版预览</div>
+          <img src="./art_preview/ch3_butcher_evidence_v6.png" alt="new" />
+        </div>
+      </div>
+      <div class="controls">
+        <label class="radio-btn"><input type="radio" name="verdict_ch3_butcher_evidence" value="通过，可直接拆帧/接入" /> 通过，可直接接入</label>
+        <label class="radio-btn"><input type="radio" name="verdict_ch3_butcher_evidence" value="基本可以，细节微调" /> 基本可以，细节微调</label>
+        <label class="radio-btn"><input type="radio" name="verdict_ch3_butcher_evidence" value="打回重做" /> 打回重做</label>
+        <input type="text" class="art-note" placeholder="可选修改意见（例如：大文再沧桑一点 / 断指创可贴再自然些）" />
+      </div>
+    </section>
+    
+  <pre id="preview"></pre>
+</div>
+<div class="sticky-bar">
+  <button class="primary" onclick="copyArtReview()">一键复制全部审图意见</button>
+  <span id="status">审完后点这里复制，发回聊天框即可</span>
+</div>
+<script>
+function copyArtReview() {
+  const lines = ['【《澳诡实录》V6 美术审批结果】'];
+  document.querySelectorAll('.art-card').forEach(card => {
+    const title = card.dataset.title;
+    const picked = card.querySelector('input[type=radio]:checked');
+    const note = card.querySelector('.art-note').value.trim();
+    lines.push('');
+    lines.push('■ ' + title);
+    lines.push('  结论：' + (picked ? picked.value : '（未表态）'));
+    if (note) lines.push('  修改意见：' + note);
+  });
+  const text = lines.join('\n');
+  const pre = document.getElementById('preview');
+  pre.textContent = text;
+  pre.style.display = 'block';
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      document.getElementById('status').textContent = '已复制到剪贴板！请粘贴发回给我。';
+    });
+  }
+}
+</script>
+</body>
+</html>

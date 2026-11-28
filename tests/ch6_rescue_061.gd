@@ -95,7 +95,15 @@ func enter_signal(interval_frames: Array[int], wait_for_response := true) -> voi
 	for interval in interval_frames:
 		OS.delay_msec(roundi(float(interval) * 1000.0 / 60.0))
 		await tap_space()
-	OS.delay_msec(900)
+	if interval_frames.size() == 2:
+		OS.delay_msec(950)
+		await get_tree().process_frame
+		check(not scene.listening_target.is_empty(), "three taps leave time for another knock or an explicit finish")
+		event_action("ui_accept", true)
+		await get_tree().process_frame
+		event_action("ui_accept", false)
+	else:
+		OS.delay_msec(1300)
 	await get_tree().process_frame
 	if wait_for_response:
 		await wait_for_signal_response()
@@ -260,7 +268,7 @@ func run() -> void:
 	for _strike in range(3):
 		await tap_space()
 		await wait_frames(18)
-	check(GameState.opening_flags.ch6_signal_sent and GameState.current_role == "dawen", "Jiamin sends a physical signal and control returns to Daven")
+	check(GameState.opening_flags.ch6_signal_sent and GameState.opening_flags.ch6_pipe_route_verified and GameState.opening_flags.ch6_live_signal_received and GameState.current_role == "dawen", "Jiamin's 3 knocks immediately verify her signal and hand control to Daven")
 	check(scene.player.appearance == "flashlight", "Daven receives his correct walking appearance after the role swap")
 	await close_panel()
 	Input.parse_input_event(phone_event.duplicate())
@@ -270,55 +278,22 @@ func run() -> void:
 	await wait_frames(3)
 	check(not scene.hud.panel_open and not get_tree().paused and scene.player.controls_enabled, "closing the finale phone restores world controls")
 
-	await walk_to(Vector2(800, 620))
-	await walk_to(Vector2(798, 252))
-	await interact_by_input("route_diagram", Vector2(742, 251))
-	check(GameState.opening_flags.ch6_route_diagram_seen, "pipe diagram and chalk evidence are recorded")
-	await close_panel()
-	await walk_to(Vector2(798, 395))
-	await walk_to(Vector2(390, 395))
-	await interact_by_input("branch_a", Vector2(390, 395))
-	await enter_signal([9, 37], false)
-	check(scene.signal_response_active and not scene.hud.panel_open, "echo response plays before its explanation")
-	check(scene.hud.prompt.text.is_empty(), "echo response removes the tap input prompt")
-	var response_light := scene.panel_lights["branch_a"] as Polygon2D
-	var first_response_alpha := response_light.color.a
-	var cues_before_pause := world_cues.size()
-	scene._pause_menu()
-	await wait_frames(40)
-	check(scene.signal_response_active and world_cues.size() == cues_before_pause and is_equal_approx(response_light.color.a, first_response_alpha) and response_beat_labels.is_empty(), "pausing freezes the response lights, text and sound cues")
-	await close_panel()
-	check(not scene.player.controls_enabled, "resuming during a response keeps movement locked until the response ends")
-	for _frame in range(60):
-		if response_beat_labels.size() == 3:
-			break
-		await get_tree().process_frame
-	check(response_beat_labels == ["管道回应  1", "管道回应  1 · 2", "管道回应  1 · 2 · 3"], "each sound cue adds a new visible beat in order")
-	check(AudioManager.world_effects.process_mode == Node.PROCESS_MODE_PAUSABLE, "response audio follows world pause even after a beat begins")
-	await wait_frames(12)
-	check(scene.signal_response_active and scene.hud.state_text.text == "管道回应  1 · 2 · 3", "the last response remains visible before the explanation")
-	if GameState.reduced_flash:
-		check(first_response_alpha > 0.0 and is_equal_approx(response_light.color.a, first_response_alpha), "reduced-flash indicator stays at a steady low brightness")
-	await wait_for_signal_response()
-	check(response_light.color.is_equal_approx(Color("c18372", 0.9)), "failed branch switches from the temporary response light to its steady status light")
-	check(world_cues.size() >= cues_before_pause + 3, "fixed echo plays three registered metallic cues")
-	check(GameState.opening_flags.ch6_failed_echo_seen and not GameState.opening_flags.ch6_pipe_route_verified, "two-short-one-long old rhythm exposes the fixed echo without verifying a route")
-	await close_panel()
+	check(not scene._target_available("branch_a") and not scene._target_available("branch_b"), "fake-echo branches A and B are removed from interaction")
+	check(scene._target_available("illusion_door"), "bleeding illusion door is available before rescuing Jiamin")
+	await walk_to(Vector2(365, 620))
+	await walk_to(Vector2(365, 525))
+	await interact_by_input("illusion_door", Vector2(342, 525))
+	check(GameState.opening_flags.ch6_failed_echo_seen and scene.hud.panel_open, "inspecting the illusion door records the temptation event and opens its choice dialogue")
 	if "--ending-write=missing" in OS.get_cmdline_user_args():
 		scene._select_missing_ending()
 		finish_ending_write("ending_missing")
 		return
-	await walk_to(Vector2(530, 395))
-	await interact_by_input("branch_c", Vector2(530, 395))
-	await enter_signal([9, 37])
-	check(GameState.opening_flags.ch6_failed_echo_seen and not GameState.opening_flags.ch6_pipe_route_verified, "replaying the old rhythm never verifies the live source")
-	check(is_zero_approx((scene.panel_lights["branch_c"] as Polygon2D).color.a), "completed response without verification clears its temporary light")
 	await close_panel()
-	await interact_by_input("branch_c", Vector2(530, 395))
-	await enter_signal([20, 32, 19])
-	check(GameState.opening_flags.ch6_pipe_route_verified and GameState.opening_flags.ch6_live_signal_received, "lower branch verifies a new player-entered rhythm")
-	var response_intervals: Array[float] = scene._signal_intervals()
-	check(response_intervals.size() == 3 and absf(response_intervals[0] - 0.34) < 0.09 and absf(response_intervals[1] - 0.53) < 0.09 and absf(response_intervals[2] - 0.31) < 0.09, "live response preserves each player-entered interval " + str(response_intervals))
+
+	await walk_to(Vector2(742, 620))
+	await walk_to(Vector2(742, 415))
+	await interact_by_input("route_diagram", Vector2(742, 388))
+	check(GameState.opening_flags.ch6_route_diagram_seen, "pipe diagram and chalk evidence are recorded")
 	await close_panel()
 
 	GameState.opening_items.erase("ahhao_camera")
@@ -336,14 +311,21 @@ func run() -> void:
 	scene._confirm_circuit_isolation()
 	check(GameState.opening_flags.ch6_circuit_isolated, "old echo feed is isolated before induction")
 	await close_panel()
-	scene._activate_lure()
+	await walk_to(Vector2(1024, 405))
+	await interact_by_input("lure_switch", Vector2(1024, 392))
 	check(GameState.opening_flags.ch6_entity_lured and is_instance_valid(scene.shadow), "verified branch starts the animated lure sequence")
 	await close_panel()
 	check(scene.shadow.get_node("Figure").is_playing(), "lured shadow uses its moving animation")
-	for _frame in range(360):
-		await get_tree().physics_frame
-	check(scene.shadow.global_position.distance_to(scene.lure_anchor.global_position) <= 52.0, "shadow reaches the coil by moving through the open service lane")
+	check(scene.shadow.target == scene.player, "the isolated test uses the same player chase as the normal game")
 	scene._lock_entity()
+	check(not GameState.opening_flags.ch6_entity_bound, "the lever rejects a pull while the wraith is outside the drawn grate")
+	for _frame in range(150):
+		if scene.boss_in_trap_zone:
+			break
+		await get_tree().physics_frame
+	check(scene.boss_in_trap_zone, "standing beyond the grate draws the chasing wraith onto it")
+	await walk_to(Vector2(976, 446))
+	await interact_by_input("lock_lever", Vector2(936, 488))
 	await wait_frames(4)
 	check(GameState.opening_flags.ch6_entity_bound and scene.scene_action_active, "mechanical lock begins only inside the coil zone")
 	var shadow_scale: Vector2 = scene.shadow.scale
@@ -369,6 +351,7 @@ func run() -> void:
 	check(GameState.opening_flags.ch6_rescue_door_open and GameState.opening_flags.ch6_jiamin_rescued, "door opening completes the physical rescue")
 	check(not is_instance_valid(scene.locked_door_body) and not is_instance_valid(scene.locked_door_occluder), "opened rescue door removes both collision and light occlusion")
 	check(GameState.opening_flags.pre_ending_checkpoint and is_instance_valid(scene.rescued_jiamin), "rescue creates the pre-ending checkpoint and Jiamin actor")
+	check(not scene._target_available("illusion_door"), "bleeding illusion door is no longer available after rescuing Jiamin")
 	await close_panel()
 	await get_tree().create_timer(0.82, true).timeout
 	await close_panel()

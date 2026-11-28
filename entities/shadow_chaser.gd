@@ -4,6 +4,7 @@ signal caught
 var target: CharacterBody2D
 var active := true
 var speed := 66.0
+var attack_animation_range := 0.0
 var step_elapsed := 0.0
 var flash_receiver: PhoneFlashReceiver
 var ghost_trail: Sprite2D
@@ -21,25 +22,30 @@ func _ready() -> void:
 
 	ghost_trail = Sprite2D.new()
 	ghost_trail.name = "ShadowAfterimage"
-	ghost_trail.position = Vector2(0, -47)
-	ghost_trail.scale = Vector2.ONE * (94.0 / 724.0)
-	ghost_trail.modulate = Color(0.68, 0.12, 0.14, 0.28)
+	ghost_trail.position = Vector2(0, -50)
+	ghost_trail.modulate = Color(0.68, 0.12, 0.14, 0.24)
 	add_child(ghost_trail)
 
 	var figure := AnimatedSprite2D.new()
 	figure.name = "Figure"
 	var frames := SpriteFrames.new()
 	frames.add_animation("walk")
-	frames.set_animation_speed("walk", 7.0)
-	var sheet: Texture2D = load("res://assets/characters/shadow_walk_011.png")
-	for i in range(6):
-		var frame := AtlasTexture.new()
-		frame.atlas = sheet
-		frame.region = Rect2(i * 362, 0, 362, 724)
-		frames.add_frame("walk", frame)
+	frames.set_animation_speed("walk", 5.2)
+	var sheet: Texture2D = load("res://assets/characters/wardrobe_stalker_v5.png")
+	var cw := sheet.get_width() * 0.5
+	var ch := sheet.get_height() * 0.5
+	for row in range(2):
+		for col in range(2):
+			var frame := AtlasTexture.new()
+			frame.atlas = sheet
+			frame.region = Rect2(col * cw, row * ch, cw, ch)
+			frame.filter_clip = true
+			frames.add_frame("walk", frame)
 	figure.sprite_frames = frames
-	figure.position = Vector2(0, -47)
-	figure.scale = Vector2.ONE * (94.0 / 724.0)
+	figure.position = Vector2(0, -50)
+	var spr_scale := Vector2.ONE * (102.0 / ch)
+	figure.scale = spr_scale
+	ghost_trail.scale = spr_scale
 	add_child(figure)
 	figure.play("walk")
 	var sound := AudioStreamPlayer.new()
@@ -48,6 +54,7 @@ func _ready() -> void:
 	sound.volume_db = -8
 	sound.stream = load("res://assets/audio/recorded/shadow_step.ogg")
 	add_child(sound)
+	# Default shadow stalker stays eerily SILENT; specific speaking bosses (Butcher/Concrete Wraith) attach their own GhostTaunt!
 
 func _physics_process(delta: float) -> void:
 	if not active or not is_instance_valid(target):
@@ -60,13 +67,14 @@ func _physics_process(delta: float) -> void:
 		return
 	var focus := flash_receiver.focus_after_flash(target)
 	var direction := global_position.direction_to(focus) if global_position.distance_to(focus) > 3.0 else Vector2.ZERO
-	$Figure.play("walk")
+	var animation := "attack" if attack_animation_range > 0.0 and global_position.distance_to(target.global_position) < attack_animation_range else "walk"
+	$Figure.play(animation)
 	velocity = direction * speed
 	move_and_slide()
 	$Figure.flip_h = direction.x > 0
 	if not GameState.reduced_flash:
 		$Figure.position = Vector2(randf_range(-1.4, 1.4), -47 + randf_range(-0.9, 0.9))
-		ghost_trail.texture = $Figure.sprite_frames.get_frame_texture("walk", $Figure.frame)
+		ghost_trail.texture = $Figure.sprite_frames.get_frame_texture(animation, $Figure.frame)
 		ghost_trail.flip_h = $Figure.flip_h
 		ghost_trail.position = -direction * 8.0 + Vector2(0, -47)
 		ghost_trail.visible = true

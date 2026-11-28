@@ -6,9 +6,19 @@ tools/engine/
 tools/recovery/
 export_templates/
 
-# ── 本地试玩包（200MB+，走 GitHub Release 分发，不入库）──
+# ── 本地试玩包与赛事提交汇总（体积过大或含不可公开文件，不入库）──
 /*.zip
 /澳诡实录_*/
+/雷火大赛_最终提交汇总/
+/submission_20261127/
+
+# ── AI 配音本地环境与模型缓存（体积过大，仅保留脚本）──
+tools/voice_ai/hf_cache/
+tools/voice_ai/qwen3_models/
+tools/voice_ai/seed-vc/
+tools/voice_ai/uv_cache/
+tools/voice_ai/venv/
+tools/voice_ai/venv_qwen3/
 
 # ── 构建报告日志与截图 ──
 docs/build_reports/
@@ -19,3 +29,4 @@ __pycache__/
 
 # ── 临时文件 ──
 *.tmp
+docs/overhaul_v6/voice_audition/refs/_tmp/

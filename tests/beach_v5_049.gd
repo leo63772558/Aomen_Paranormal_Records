@@ -61,7 +61,7 @@ func run() -> void:
 	scene._close_panel()
 	check(not get_tree().paused and scene.player.controls_enabled, "focus_resume_restores_beach_control")
 	scene.interact_target("trace_a")
-	check(GameState.opening_flags.beach_sole_seen and GameState.has_demo_item("shoe_repair_photo"), "field comparison registers the displayed reference before opening the journal")
+	check(GameState.opening_flags.beach_trace_a_seen and scene.hud.panel_open, "inspecting washed-up postman remains records trace_a clue dialogue")
 	scene._close_panel()
 	var phone_event := InputEventAction.new()
 	phone_event.action = "phone"
@@ -93,7 +93,7 @@ func run() -> void:
 	check(scene.hud.archive_page == "map" and scene.hud.default_phone_widget.current_objective == scene.hud.objective.text and get_tree().paused, "M opens the handset map with the current objective")
 	Input.parse_input_event(journal_event)
 	await frames()
-	check(scene.hud.archive_page == "journal" and scene.hud.default_phone_widget.get_script() == preload("res://ui/beach_footprints.gd") and GameState.has_demo_item("shoe_repair_photo"), "J switches to the current chapter's footprint journal and reads the offline shoe photo")
+	check(scene.hud.archive_page == "journal" and scene.hud.default_phone_widget != null and scene.hud.default_phone_widget.journal_mode, "J switches to the current chapter's beach evidence journal")
 	Input.parse_input_event(bag_event)
 	await frames()
 	check(scene.hud.archive_page == "inventory" and not scene.hud.default_phone_widget.journal_mode and get_tree().paused, "B switches to the bag without resuming the tide")
@@ -164,6 +164,12 @@ func run() -> void:
 	await get_tree().create_timer(0.8, true).timeout
 	check(GameState.opening_flags.beach_headlights_on and scene.car_lights[0].energy > 0.57, "knob_turns_actual_high_beams_on")
 	check(scene.in_headlight(Vector2(800, 430)) and not scene.in_headlight(Vector2(180, 480)), "light_boundary_matches_angle_and_distance")
+	check(scene.in_headlight(Vector2(640, 423)) and scene.in_headlight(Vector2(665, 482)) and scene.in_headlight(Vector2(870, 336)), "the visible beam covers all three investigation positions")
+	var ta: Vector2 = scene.TARGETS.trace_a
+	var wr: Vector2 = scene.TARGETS.wrack
+	var tb: Vector2 = scene.TARGETS.trace_b
+	check(ta.distance_to(wr) >= 150.0 and ta.distance_to(tb) >= 150.0 and wr.distance_to(tb) >= 150.0, "three beach footprint sites are widely separated >= 150px without overlap")
+	check(scene.in_headlight(ta) and scene.in_headlight(wr) and scene.in_headlight(tb), "all three separated footprint sites lie inside headlight cone")
 	mouse(board, Vector2(223, 166), true)
 	drag_to(board, Vector2(123, 108))
 	mouse(board, Vector2(123, 108), false)
@@ -197,38 +203,16 @@ func run() -> void:
 	await shot("beach_shaft_mark_repair")
 	await get_tree().create_timer(1.2, true).timeout
 	check(not scene.service_action_active and scene.player.controls_enabled, "entrance preview restores the original camera and control")
-	scene._open_footprints()
+	scene.interact_target("trace_b")
 	await frames()
-	board = scene.widget
-	board.matching = "A"
-	board.earlier = "A"
-	board.submit()
-	check(not GameState.opening_flags.beach_footprints_solved, "unknown_world_evidence_cannot_be_skipped")
+	check(not GameState.opening_flags.beach_footprints_solved, "requires all three beach clues before advancing")
 	scene._close_panel()
-	for id in ["trace_a", "wrack", "trace_b"]:
+	for id in ["wrack", "trace_b"]:
 		scene.interact_target(id)
 		await frames()
 		scene._close_panel()
-	scene._open_footprints()
-	await frames()
-	board = scene.widget
-	board.detail_buttons[2].pressed.emit()
-	await get_tree().create_timer(0.23, true).timeout
-	check(board.zoom > 2.7 and board.source_image.position.y < -125 and board.field_image.position.y < -125, "heel comparison magnifies the same region of both photographs")
-	check(board.detail_buttons[0].get_rect().end.y < board.choice_buttons[0].position.y, "magnifying controls stay above both answer rows")
-	await shot("beach_heel_repair")
-	board.detail_buttons[0].pressed.emit()
-	await get_tree().create_timer(0.23, true).timeout
-	board.matching = "B"
-	board.earlier = "B"
-	board.submit()
-	check(not GameState.opening_flags.beach_footprints_solved, "fresh_different_shoe_is_not_jiamin")
-	board.matching = "A"
-	board.earlier = "A"
-	board.submit()
-	check(GameState.opening_flags.beach_footprints_solved, "identity_and_overlap_time_both_required")
+	check(GameState.opening_flags.beach_footprints_solved, "investigating postman remains, butcher satchel, and Jiamin hairpin solves beach lead")
 	await shot("beach_footprint_evidence_049")
-	scene._close_panel()
 	scene.player.position = Vector2(760, 400)
 	await frames(12)
 	await shot("beach_headlight_boundary_049")

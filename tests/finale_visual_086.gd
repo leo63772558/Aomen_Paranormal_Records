@@ -34,11 +34,6 @@ func run() -> void:
 	var fixture := preload("res://tests/ch6_rescue_061.gd").new()
 	fixture._prepare_state()
 	fixture.free()
-	var capture_signal := "--signal-response" in OS.get_cmdline_user_args()
-	if capture_signal:
-		GameState.reduced_flash = true
-		GameState.opening_flags.ch6_signal_sent = true
-		GameState.opening_flags.ch6_route_diagram_seen = true
 	viewport = SubViewport.new()
 	viewport.size = Vector2i(640, 360)
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -48,19 +43,6 @@ func run() -> void:
 	viewport.add_child(scene)
 	await frames(45)
 	scene._close_panel()
-	if capture_signal:
-		scene.player.aim_override = true
-		scene.player.position = Vector2(545, 210)
-		scene.player.look_dir = Vector2.UP
-		scene.player.reset_physics_interpolation()
-		(scene.player.get_node("Camera2D") as Camera2D).reset_smoothing()
-		await frames(4)
-		var intervals: Array[float] = [0.14, 0.62]
-		scene._play_signal_response("branch_a", intervals)
-		await frames(72)
-		await shot("finale_signal_reduced")
-		get_tree().quit()
-		return
 	scene.player.aim_override = true
 	scene.player.position = Vector2(224, 312)
 	scene.player.reset_physics_interpolation()
@@ -81,6 +63,13 @@ func run() -> void:
 	await frames(18)
 	for _strike in range(2):
 		await scene._strike_jiamin_pipe()
+	await frames(132)
+	scene.player.position = Vector2(400, 525)
+	scene.player.look_dir = Vector2.LEFT
+	scene.player.reset_physics_interpolation()
+	(scene.player.get_node("Camera2D") as Camera2D).reset_smoothing()
+	await frames(12)
+	await shot("finale_v6_illusion_door")
 	# Reachable rescue states require the diagram to have been inspected before
 	# the signal route can be verified; keep the visual fixture consistent.
 	GameState.opening_flags.ch6_route_diagram_seen = true
@@ -143,7 +132,15 @@ func run() -> void:
 			break
 		await frames(1)
 	scene._record_final_ending("ending_escape")
+	await frames(44)
 	await shot("finale_ending_escape_repair")
+	var photo_fixture := "res://docs/build_reports/opening_006_actual_photo.png"
+	if FileAccess.file_exists(photo_fixture):
+		GameState.opening_photo = ImageTexture.create_from_image(Image.load_from_file(photo_fixture))
+	for ending_id in ["ending_truth", "ending_missing"]:
+		scene._show_ending(ending_id)
+		await frames(44)
+		await shot("finale_" + ending_id)
 	print("VISUAL ACTION STATE camera_handed=", GameState.opening_flags.ch6_ahhao_camera_handed, " departure_finished=", not scene.scene_action_active)
 	AudioManager.stop_all()
 	get_tree().paused = false

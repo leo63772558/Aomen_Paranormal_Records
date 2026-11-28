@@ -3,15 +3,28 @@ extends Node2D
 
 const SHEET := preload("res://assets/characters/rescue_support_095.png")
 const CELL := Vector2(512, 512)
-const SCALE := 0.17
+const SCALE := 0.198
 # The sheet faces right; flip it for Jiamin emerging from the right-hand hatch.
 const DAWEN_FOOT := Vector2(132, 490)
 
 var figure: Sprite2D
+var shadow: Polygon2D
 var displayed_frame := 0
 
 
 func _ready() -> void:
+	shadow = Polygon2D.new()
+	shadow.name = "PairContactShadow"
+	var pts := PackedVector2Array()
+	for i in range(16):
+		var a := TAU * float(i) / 16.0
+		pts.append(Vector2(cos(a) * 20.0, sin(a) * 6.0))
+	shadow.polygon = pts
+	shadow.position = Vector2(-14, 1)
+	shadow.color = Color(0.02, 0.025, 0.02, 0.36)
+	shadow.z_index = -1
+	add_child(shadow)
+
 	figure = Sprite2D.new()
 	figure.centered = false
 	figure.flip_h = true
@@ -28,6 +41,12 @@ func set_frame(index: int) -> void:
 	atlas.atlas = SHEET
 	atlas.region = Rect2(Vector2(displayed_frame % 3, floori(displayed_frame / 3.0)) * CELL, CELL)
 	figure.texture = atlas
+
+
+func _bob_step(t: float) -> void:
+	if is_instance_valid(figure):
+		var dip := sin(t * PI) * 1.8
+		figure.position = -DAWEN_FOOT * SCALE + Vector2(0, dip)
 
 
 func perform(dawen: PlayerController, jiamin: PlayerController) -> void:
@@ -47,9 +66,10 @@ func perform(dawen: PlayerController, jiamin: PlayerController) -> void:
 		sequence.tween_callback(set_frame.bind(frame))
 		if frame == 1:
 			sequence.tween_callback(func(): AudioManager.play_footstep(true, false))
-		sequence.tween_interval(0.2)
+		sequence.tween_method(_bob_step, 0.0, 1.0, 0.19).set_trans(Tween.TRANS_SINE)
 	await sequence.finished
-	if not is_inside_tree() or not is_instance_valid(dawen) or not is_instance_valid(jiamin): return
+	if not is_inside_tree() or not is_instance_valid(dawen) or not is_instance_valid(jiamin):
+		return
 	if is_instance_valid(dawen.sprite):
 		dawen.sprite.visible = true
 	if is_instance_valid(jiamin.sprite):

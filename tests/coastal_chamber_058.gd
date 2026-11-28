@@ -110,6 +110,7 @@ func seed_landing() -> void:
 
 func run() -> void:
 	check(GameState.profile == "test", "isolated test profile")
+	GameState.legacy_coastal_qa = true
 	seed_landing()
 	scene = load("res://levels/ch5_hacsa_beach/coastal_landing.tscn").instantiate()
 	get_tree().root.add_child(scene)
@@ -144,7 +145,7 @@ func run() -> void:
 	await interact("west", Vector2(188, 410))
 	check(GameState.opening_flags.coastal_chamber_tide_seen and GameState.opening_flags.coastal_chamber_grate_seen and GameState.opening_flags.coastal_chamber_hatch_seen and GameState.opening_flags.coastal_chamber_west_seen, "four physical observations are recorded")
 	check(GameState.opening_flags.coastal_chamber_route_verified, "contradictory water and age marks identify the dry route")
-	check(scene.chalk_arrow.default_color == Color("d9cba3"), "route verification updates the chalk marker")
+	check("左拱道" in scene.hud.objective.text and "鞋印" in scene.hud.defense_notice.text, "route verification points to the physical left arch and explains the evidence")
 	await shot("coastal_chamber_route_058")
 
 	await walk_to(Vector2(300, 430))

@@ -60,6 +60,7 @@ var floor_art := preload("res://assets/tilesets/ammo_floor_026.png")
 var pit_art := preload("res://assets/tilesets/bunker_ammo_pits_2d_022.png")
 var detail_art := preload("res://assets/tilesets/bunker_lowerroom_routes_023.png")
 var stone_wall_art := preload("res://assets/tilesets/bunker_stair_2d_019.png")
+var shelter_room_art := preload("res://assets/tilesets/bunker_shelter_room_v9.png")
 var trail_art := preload("res://assets/props/jiamin_trail_props_044.png")
 
 func _ready() -> void:
@@ -92,6 +93,14 @@ func _ready() -> void:
 	var ambient := CanvasModulate.new()
 	ambient.color = Color("8f9a8e")
 	add_child(ambient)
+	# Real warm recessed bunker lamp illuminating the lower-right shelter room (no flat yellow circles!)
+	var alcove_lamp := PointLight2D.new()
+	alcove_lamp.position = NOTE + Vector2(-10, -16)
+	alcove_lamp.texture = preload("res://assets/lighting/soft_light.png")
+	alcove_lamp.texture_scale = 0.42
+	alcove_lamp.color = Color("e8bf74")
+	alcove_lamp.energy = 0.65
+	add_child(alcove_lamp)
 	hud = preload("res://ui/quiet_hud.gd").new()
 	add_child(hud)
 	hud.close_requested.connect(close_panel)
@@ -206,7 +215,7 @@ func _safe_preview() -> void:
 	GameState.opening_flags.ch2_shaft_demo_seen = true
 	_checkpoint()
 	preview_explanation_ready = true
-	show_panel("无底洞与桶绳", "铁罐滚落地面，西岸那个无脸巡山人立刻循声转头。防空洞中央就是探险传闻中深不见底的垂直通风【无底洞】，白线里面没有地面。\n\n东岸的桶绳能从安全位拉响诱它冲进无底洞；右下侧廊铁门也可以从内侧闩死。", [{"text":"先看清路线，再往前走", "callback":_start_active}])
+	show_panel("竖井前厅 · 守卫暗室与九十九级梯道入口", "铁罐滚落地面，西岸那个黑衣巡山人怨灵立刻循声僵硬转头——这里正是通往【九十九级深层梯道】的战时排风竖井前厅，右下角的守卫铁门内藏着直下梯道的暗梯！\n\n地面白线内是深不见底的垂直通风竖井。拉响东岸滑轮铁桶即可诱它直线坠井，也可绕进右下角守卫暗室把铁门从内侧闩死，再沿便签指引下梯道。", [{"text":"看清路线，开始行动", "callback":_start_active}])
 
 func _start_active() -> void:
 	phase = Phase.ACTIVE
@@ -538,11 +547,35 @@ func show_phone() -> void:
 
 func _draw() -> void:
 	draw_texture_rect(floor_art, Rect2(Vector2.ZERO, MAP), false)
-	# Reuse the established stonework and open-pit material, with matching geometry.
+	# Crumbling concrete pit rim + deep shadowed abyss + broken rusted iron stanchions (no bare dashed lines)
+	draw_rect(PIT.grow(10), Color(0.11, 0.12, 0.10, 0.72))
 	draw_texture_rect_region(pit_art, PIT.grow(4), Rect2(190, 279, 246, 73))
-	for side in [Vector2(319, 217), Vector2(319, 326)]:
-		for x in range(7):
-			draw_line(side + Vector2(x*24,0), side + Vector2(x*24+13,0), Color("bbbca3"), 1.1)
+	draw_rect(PIT_INNER, Color(0.02, 0.03, 0.03, 0.86))
+	draw_rect(PIT_INNER.grow(-6), Color(0.0, 0.0, 0.0, 0.94))
+	# Weathered concrete rim coping & rusted guardrail posts with sagging iron chain
+	draw_rect(PIT.grow(6), Color("4f4b40"), false, 3.0)
+	draw_rect(PIT.grow(2), Color("24221d"), false, 2.0)
+	var posts := [
+		Vector2(322, 222), Vector2(368, 222), Vector2(422, 222), Vector2(476, 222),
+		Vector2(322, 322), Vector2(368, 322), Vector2(422, 322), Vector2(476, 322)
+	]
+	for i in range(3):
+		var a: Vector2 = posts[i]
+		var b: Vector2 = posts[i + 1]
+		draw_line(a, a.lerp(b, 0.5) + Vector2(0, 5), Color("3c3329"), 2.0)
+		draw_line(a.lerp(b, 0.5) + Vector2(0, 5), b, Color("3c3329"), 2.0)
+		var c: Vector2 = posts[i + 4]
+		var d: Vector2 = posts[i + 5]
+		draw_line(c, c.lerp(d, 0.5) + Vector2(0, 5), Color("3c3329"), 2.0)
+		draw_line(c.lerp(d, 0.5) + Vector2(0, 5), d, Color("3c3329"), 2.0)
+	for post: Vector2 in posts:
+		draw_rect(Rect2(post - Vector2(3, 10), Vector2(6, 12)), Color("3f372e"))
+		draw_rect(Rect2(post - Vector2(2, 10), Vector2(2, 11)), Color("6d5d4b"))
+	# Real architectural lower-right wartime concrete guardroom interior (replaces bare wall patch & floating note!)
+	draw_texture_rect(shelter_room_art, Rect2(586, 366, 148, 138), false)
+	# Southern tunnel entrance framing around ENTRY
+	draw_rect(Rect2(352, 488, 76, 38), Color(0.03, 0.04, 0.04, 0.82))
+	draw_rect(Rect2(348, 484, 84, 6), Color("4a453b"))
 	draw_texture_rect_region(detail_art, Rect2(475,237,32,44), Rect2(708,568,47,63))
 	var sway := sin(bucket_motion * 12.0) * bucket_motion * 4
 	var rope_hand := ROPE + Vector2(0,-20)
@@ -555,8 +588,3 @@ func _draw() -> void:
 	for i in range(5):
 		var at := rope_hand.lerp(bucket_handle,float(i)/5.0)
 		draw_line(at + Vector2(-1,-1), at + Vector2(1,1), Color("b2a07b"), 1)
-	# Masonry uses the same wall material as the room, not colored blocking boxes.
-	draw_texture_rect_region(stone_wall_art, Rect2(590,362,26,38), Rect2(510,200,100,190))
-	draw_texture_rect_region(stone_wall_art, Rect2(684,362,44,38), Rect2(510,200,100,190))
-	draw_texture_rect_region(stone_wall_art, Rect2(590,400,14,100), Rect2(510,200,28,190))
-	draw_texture_rect_region(trail_art, Rect2(678,436,25,24), Rect2(45,623,497,527))

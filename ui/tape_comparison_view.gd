@@ -21,7 +21,7 @@ func _ready() -> void:
 	sound = AudioStreamPlayer.new()
 	sound.bus = "Voice"
 	sound.volume_db = -8.0
-	streams = [preload("res://assets/audio/demo/recording_fragment_026.wav"), preload("res://assets/audio/recorded/bus_replayed_fragment_037.wav")]
+	streams = [preload("res://assets/audio/v6/recording_fragment_v6.wav"), preload("res://assets/audio/recorded/bus_replayed_fragment_037.wav")]
 	sound.stream = streams[0]
 	add_child(sound)
 	sound.finished.connect(func(): active_track = -1)
@@ -33,7 +33,22 @@ func _ready() -> void:
 		button.text = "▶ 旧附件 · 失踪前" if index == 0 else "▶ 车载片段 · 刚刚"
 		button.position = Vector2(6, 4 + index * 83)
 		button.size = Vector2(274, 26)
+		button.focus_mode = Control.FOCUS_NONE
+		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		button.add_theme_font_size_override("font_size", 13)
+		button.add_theme_color_override("font_color", Color("ece3c4"))
+		button.add_theme_color_override("font_hover_color", Color("fff3cc"))
+		var bs := StyleBoxFlat.new()
+		bs.bg_color = Color(0.08, 0.16, 0.13, 0.90)
+		bs.border_color = Color("8c7d57")
+		bs.set_border_width_all(1)
+		bs.set_corner_radius_all(2)
+		var bh := bs.duplicate() as StyleBoxFlat
+		bh.bg_color = Color("234a3a")
+		bh.border_color = Color("e2cc8c")
+		button.add_theme_stylebox_override("normal", bs)
+		button.add_theme_stylebox_override("hover", bh)
+		button.add_theme_stylebox_override("pressed", bh)
 		button.pressed.connect(play_track.bind(index))
 		add_child(button)
 		track_buttons.append(button)

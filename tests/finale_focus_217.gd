@@ -27,19 +27,15 @@ func run() -> void:
 	await frames()
 	scene._close_panel()
 	GameState.enter_role("dawen")
+	GameState.opening_flags.ch6_signal_sent = true
 	GameState.opening_flags.ch6_route_diagram_seen = true
-	scene._begin_signal_test("branch_c")
-	scene._record_signal_tap()
-	scene._record_signal_tap()
-	check(scene.signal_taps.size() == 2 and not scene.player.controls_enabled, "pipe input in progress before focus loss")
+	GameState.opening_flags.ch6_pipe_route_verified = true
+	scene._sync_illusion_door_visibility()
+	scene.player.controls_enabled = true
 	scene.notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
-	check(get_tree().paused and scene.hud.panel_open and scene.listening_target.is_empty() and scene.signal_taps.is_empty(), "focus loss cancels the unfinished rhythm and pauses")
-	check(not GameState.opening_flags.ch6_pipe_route_verified and not scene.signal_response_active, "focus loss does not validate or play a response")
+	check(get_tree().paused and scene.hud.panel_open, "focus loss pauses Dawen exploration in the finale")
 	scene._close_panel()
-	check(not get_tree().paused and scene.player.controls_enabled, "resume restores control after cancelled rhythm")
-	scene._begin_signal_test("branch_c")
-	check(scene.listening_target == "branch_c" and scene.signal_taps.is_empty(), "pipe test can be restarted")
-	scene._cancel_signal_test()
+	check(not get_tree().paused and scene.player.controls_enabled, "resume restores Dawen controls after focus pause")
 	scene.scene_action_active = true
 	scene.player.controls_enabled = false
 	scene.notification(NOTIFICATION_APPLICATION_FOCUS_OUT)

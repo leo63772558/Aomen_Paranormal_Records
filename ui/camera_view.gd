@@ -6,13 +6,15 @@ var center := Vector2(320, 190)
 var shutter_busy: bool = false
 var is_valid_framing: bool = false
 var hint_text: String = "站在嘉敏左侧退后些，把她和身后建筑都框入"
+var touch_dragging: bool = false
+const HALF_FRAME := Vector2(100, 75)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func frame_rect() -> Rect2:
-	return Rect2(center - Vector2(100, 75), Vector2(200, 150))
+	return Rect2(center - HALF_FRAME, HALF_FRAME * 2.0)
 
 func _draw() -> void:
 	var frame := frame_rect()
@@ -34,17 +36,42 @@ func _draw() -> void:
 	
 	# Status hint bar
 	var font := get_theme_default_font()
-	var status_msg: String = "✔ 取景完美！点击鼠标左键拍摄  [ C 退出 ]" if is_valid_framing else ("✖ " + hint_text + "  [ C 退出 ]")
-	var msg_pos := Vector2(frame.position.x - 20, frame.end.y + 22)
-	draw_rect(Rect2(msg_pos + Vector2(-6, -14), Vector2(260, 20)), Color(0.05, 0.08, 0.07, 0.82))
-	draw_string(font, msg_pos, status_msg, HORIZONTAL_ALIGNMENT_LEFT, 260, 11, ink)
+	var ready_msg := "取景就绪，点右下「拍照」" if GameState.touch_mode_active else "取景就绪，左键拍照"
+	var status_msg := ready_msg if is_valid_framing else hint_text
+	var exit_msg := "右上放下" if GameState.touch_mode_active else "Esc 放下手机"
+	var status := Rect2(146, 322, 348, 27)
+	draw_rect(status, Color(0.035, 0.07, 0.055, 0.94))
+	draw_rect(status, Color("796f55"), false)
+	draw_string(font, status.position + Vector2(12, 18), status_msg, HORIZONTAL_ALIGNMENT_LEFT, 252, 12, Color("efe4c8"))
+	draw_string(font, status.position + Vector2(272, 18), exit_msg, HORIZONTAL_ALIGNMENT_LEFT, 70, 11, Color("c9bea1"))
 
 func _input(event: InputEvent) -> void:
 	if not visible or shutter_busy:
 		return
-	if event is InputEventMouseMotion:
-		center = event.position.clamp(Vector2(90, 115), Vector2(550, 260))
+	if event is InputEventScreenTouch:
+		touch_dragging = event.pressed
+		if event.pressed:
+			center = event.position.clamp(Vector2(108, 115), Vector2(532, 244))
+			queue_redraw()
+		get_viewport().set_input_as_handled()
+		return
+	elif event is InputEventScreenDrag:
+		center = event.position.clamp(Vector2(108, 115), Vector2(532, 244))
 		queue_redraw()
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventMouseMotion and event.device != InputEvent.DEVICE_ID_EMULATION:
+		center = event.position.clamp(Vector2(108, 115), Vector2(532, 244))
+		queue_redraw()
+	elif event is InputEventMouseMotion and event.device == InputEvent.DEVICE_ID_EMULATION and touch_dragging:
+		center = event.position.clamp(Vector2(108, 115), Vector2(532, 244))
+		queue_redraw()
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and (GameState.touch_mode_active or event.device == InputEvent.DEVICE_ID_EMULATION):
+		touch_dragging = event.pressed
+		if event.pressed:
+			center = event.position.clamp(Vector2(108, 115), Vector2(532, 244))
+			queue_redraw()
+		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("photo_capture"):
 		shutter_requested.emit()
 		get_viewport().set_input_as_handled()

@@ -4,7 +4,7 @@ class_name DemoItems
 # IDs are stable in the checkpoint. Scene-specific descriptions live with the interactions.
 const ENTRIES := {
 	"multitool_pliers": ["多功能工具钳", "大文的随身工具。可拆检修盖、剪细铁丝。", "multitool_pliers_251"],
-	"trip_map": ["两日旅行攻略", "第一天坐金巴过桥，换新福利巴士到大三巴吃葡挞，傍晚去废弃酒店看 304 事故房。查完吃水蟹粥。", "travel_map_026"],
+	"trip_map": ["澳门手绘路线图", "嘉敏手绘的澳门寻踪路线图，标注了福荣里、大三巴、松山、大关斜巷、33路与黑沙各站。", "travel_map_026"],
 	"old_304_photo": ["福荣旧酒店 304 旧照", "嘉敏带来的事故房旧照。右后墙有一扇半开的百叶木门，床脚旁是缺了一角的四瓣花砖。", "room304_old_photo_026"],
 	"jiamin_phone": ["嘉敏的手机", "在 304 门边找到。按 Q 或 Tab 查看她保存的聊天、旧图和行程。", "jiamin_phone_011"],
 	"ceramic_fuse": ["备用陶瓷芯", "值班台下的维修备件，用于更换模拟装置里的烧蚀芯。", "fuse_026"],
@@ -26,14 +26,15 @@ const ENTRIES := {
 	"loose_stone": ["碎石", "一枚从护栏内侧捡起的碎石，可以用来试探深坑。", "stone_026"],
 	"stair_rubbing": ["机房墙面拓记", "白线停在八十九，缺角和墙钉成对出现。三道人影的脚印朝相反方向。", "stair_rubbing_026"],
 	"bunker_recording": ["嘉敏的防空洞录音机", "嘉敏在防空洞绝境中录下的求救录音，背景带着隐约的哭声与求救暗号，附签写着大关斜巷。", "recorder_026"],
-	"archive_spare_key": ["方牌备用钥匙", "从大关斜巷肉铺后间的资料柜取出。钥匙系着一枚方铜牌，牌角磨痕与合照中第四人的铜牌相似。", "bunker_key_025"],
+	"archive_spare_key": ["方牌备用钥匙", "从大关斜巷肉铺后间的暗柜取出。钥匙系着一枚方铜牌，与合照中屠夫围裙旁挂着的铜牌一致。", "bunker_key_025"],
 	"w17_bus_ticket": ["33 路时刻表撕页", "嘉敏躲进冷库时从旧时刻表撕下的一页，标出亚马喇前地。它说明她准备去哪里求援，不是她已经上车的车票。", "jiamin_trail_props_044"],
 	"laochen_handoff_note": ["时刻表背面的求生留言", "嘉敏的字迹：全城无信号，街上有东西追我。我去亚马喇前地，找亮灯的 33 路，往路环报警。\n她是在躲避追逐时留下这页纸，不知道阿豪已经遇害。", "jiamin_trail_props_044"],
 	"jiamin_lens_cap": ["嘉敏的镜头盖", "肉铺冷柜下找到的镜头盖。内侧那条磨白的胶带，与她出发前用的相机一致。", "jiamin_trail_props_044"],
+	"jiamin_severed_finger": ["嘉敏带尾戒的断指", "大关斜巷旧肉铺血盆旁找到的断指——左手尾指戴着嘉敏的细银尾戒，指节旁沾着半片米色创可贴。她曾在这里撞破屠夫惨案并拼死逃脱。", "jiamin_severed_finger_v6"],
 	"ahhao_camera": ["阿豪的相机", "大文在楼梯口蹲下扶阿豪时取回的相机，摄影补光灯仍装在机顶。不是失踪后的新消息；卡里的旅行影像尚待后续场景整理。", "ahhao_camera_051"],
-	"shoe_repair_photo": ["出发前的鞋底维修照", "嘉敏手机里原有的照片。右侧鞋底缺了一角，三道斜纹和两枚跟块仍很清楚；照片不是失踪后收到的新消息。", "footprint_evidence_039"],
+	"shoe_repair_photo": ["网购户外靴订单与鞋底实拍图", "大文手机里保存着以前帮嘉敏网购这双 37 码户外靴的订单与鞋底实拍图：斜人字纹底，右后跟边缘留着一处三角缺角。", "footprint_evidence_039"],
 	"beach_cabinet_key": ["救生站资料柜钥匙", "高地保管箱内的黄铜钥匙，对应蓝门旁资料柜的锁芯。", "beach_mechanism_parts_040"],
-	"hotel_maintenance_plan": ["沿海工事维护图", "救生站保留的旧工事维护档案。下排水口位于潮线内，侧向维护井通往上层夹道；需要到现场核对嘉敏的粉笔箭头。", "coastal_plan_047"]
+	"hotel_maintenance_plan": ["沿海工事维护图", "救生站保留的旧工事维护档案。下排水口位于潮线内，侧向维护井通往上层夹道；需要到现场核对嘉敏留下的红布与鞋印。", "coastal_plan_047"]
 }
 const PROP_CELLS := {
 	"ceramic_fuse": 0, "insulated_bridge": 1, "wet_tag": 2, "service_spindle": 3,

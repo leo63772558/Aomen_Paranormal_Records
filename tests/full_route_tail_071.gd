@@ -12,6 +12,14 @@ var held := {"move_left": false, "move_right": false, "move_up": false, "move_do
 func _initialize() -> void:
 	call_deferred("run")
 
+func capture_stage(label: String) -> void:
+	if DisplayServer.get_name() == "headless" or not "--capture-route" in OS.get_cmdline_user_args():
+		return
+	await process_frame
+	await RenderingServer.frame_post_draw
+	var image := root.get_texture().get_image()
+	check(image != null and image.save_png("res://docs/build_reports/%s_%s.png" % [state.run_id, label]) == OK, "hidden render: " + label)
+
 
 func check(value: bool, label: String) -> bool:
 	checks += 1
@@ -148,6 +156,7 @@ func run() -> void:
 		return
 	state.request_room_change(state.current_room_id, state.pending_entry_id)
 	await entered("ch5_hacsa_beach")
+	await capture_stage("10_hacsa_beach")
 	await via([Vector2(130, 215), Vector2(100, 145)])
 	await use_at("road_exit", Vector2(90, 125))
 	await entered("ch5_coastal_works")
@@ -169,9 +178,11 @@ func run() -> void:
 	await use_at("next", Vector2(118, 365))
 	check(state.opening_flags.coastal_silt_route_verified, "compressed 3-room route advances directly to pressure gallery")
 	await entered("ch5_coastal_pressure_gallery")
+	check(not state.transition_save_failed and "保存失败" not in scene.hud.defense_notice.text, "first entry saves after marking the gallery visit")
 	await via([Vector2(640, 424), Vector2(315, 424)])
 	await use_at("inlet", Vector2(315, 370), false)
 	var pressure_console = scene.widget
+	await capture_stage("11_pressure_console")
 	for button in pressure_console.captions:
 		button.pressed.emit()
 		await frames(47)
@@ -186,49 +197,43 @@ func run() -> void:
 	await use_at("pipe_item", Vector2(224, 510))
 	await use_at("jiamin_signal_pipe", Vector2(250, 248))
 	await frames(20)
+	await capture_stage("12_jiamin_pipe")
 	for _strike in range(3):
 		await tap_signal()
 		await frames(18)
-	check(state.opening_flags.ch6_signal_sent and state.current_role == "dawen", "Jiamin's signal hands control to Daven")
-	await via([Vector2(800, 620), Vector2(798, 252)])
-	await use_at("route_diagram", Vector2(798, 252))
-	await walk(Vector2(798, 395))
-	await use_at("branch_c", Vector2(530, 395), false)
-	check(scene.listening_target == "branch_c", "selected the real signal test")
-	await tap_signal()
-	for interval_ms in [210, 380, 230]:
-		OS.delay_msec(interval_ms)
-		await tap_signal()
-	OS.delay_msec(900)
-	for _i in range(240):
-		if state.opening_flags.ch6_pipe_route_verified:
+	for _frame in range(240):
+		if scene.player.controls_enabled:
 			break
 		await process_frame
-	check(state.opening_flags.ch6_pipe_route_verified, "new rhythm receives a live response")
-	await dismiss()
-	await via([Vector2(800, 395)])
-	await use_at("venue_archive", Vector2(944, 310), false)
+	check(state.opening_flags.ch6_signal_sent and state.opening_flags.ch6_pipe_route_verified and state.current_role == "dawen", "Jiamin's 3 knocks immediately verify her signal and hand control to Daven")
+	check(scene.player.controls_enabled, "controls return once the role card is off screen")
+	await via([Vector2(742, 620), Vector2(742, 415)])
+	await use_at("route_diagram", Vector2(742, 388))
+	await use_at("venue_archive", Vector2(944, 396), false)
 	await choose("展开地宫工事名册")
 	await choose("继续核对另一份档案")
-	await choose("展开娱乐场停工公文")
+	await choose("展开旧楼封墙停工公文")
 	await choose("收好文件袋")
 	check(state.opening_flags.ch6_bunker_register_found and state.opening_flags.ch6_venue_stopwork_found, "both story archives collected through their visible choices")
-	await use_at("electrical_cabinet", Vector2(855, 325), false)
-	await choose("拉下旧回声旁路隔离闸")
+	await use_at("electrical_cabinet", Vector2(855, 396), false)
+	await choose("合上高压电弧主闸")
 	await dismiss()
-	await use_at("lure_switch", Vector2(1010, 380))
-	for _i in range(380):
+	await use_at("lure_switch", Vector2(1024, 405))
+	for _i in range(150):
+		if scene.boss_in_trap_zone:
+			break
 		await physics_frame
-	check(is_instance_valid(scene.shadow) and scene.shadow.global_position.distance_to(scene.lure_anchor.global_position) <= 52.0, "shadow reaches the coil through the scene")
-	await use_at("lock_lever", Vector2(936, 468))
+	check(is_instance_valid(scene.shadow) and scene.boss_in_trap_zone, "chasing wraith steps onto the visible grate")
+	await use_at("lock_lever", Vector2(976, 446))
 	check(state.opening_flags.ch6_entity_bound, "physical lock traps the shadow")
-	await use_at("rescue_door", Vector2(1118, 335), false)
+	await use_at("rescue_door", Vector2(1118, 415), false)
 	for _i in range(540):
 		if state.opening_flags.ch6_jiamin_rescued and not scene.scene_action_active and scene.hud.panel_open:
 			break
 		await process_frame
 	check(state.opening_flags.ch6_jiamin_rescued and scene.hud.panel_open, "rescue animation reaches the reunion dialogue")
 	check(state.opening_flags.ch6_ahhao_camera_handed, "Ah Hao's camera handoff completes before the reunion dialogue")
+	await capture_stage("13_reunion")
 	await tap("interact")
 	await frames(52)
 	await choose("准备撤离")
@@ -240,6 +245,9 @@ func run() -> void:
 		await process_frame
 	check(state.opening_flags.ending_truth and state.has_pre_ending_checkpoint(), "complete route reaches truth ending and preserves the decision checkpoint")
 	check(state.opening_photo != null and state.has_demo_item("ahhao_camera"), "opening photo and camera remain in the ending save")
+	if "--capture-route" in OS.get_cmdline_user_args():
+		await frames(110)
+		await capture_stage("14_truth_ending")
 	print("FULL ROUTE TAIL THROUGH TRUTH ENDING checks=%d failed=%s" % [checks, failed])
 	paused = false
 	quit(1 if failed else 0)

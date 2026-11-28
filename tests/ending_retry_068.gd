@@ -73,6 +73,7 @@ func run() -> void:
 			await frames(3)
 			var buttons_clear := true
 			var viewport_rect := get_viewport().get_visible_rect()
+			check(viewport_rect.encloses(final_scene.hud.modal.get_global_rect()), "the complete ending caption frame fits inside the viewport")
 			var body_rect: Rect2 = final_scene.hud.panel_body.get_global_rect()
 			var footer_rect: Rect2 = final_scene.hud.page_hint.get_global_rect()
 			for button in final_scene.hud.choice_buttons:

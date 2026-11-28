@@ -61,14 +61,14 @@ func _build_preparation_socket() -> void:
 	preparation_socket = Node2D.new()
 	preparation_socket.name = "ChapterPreparationSocket"
 	preparation_socket.position = GameState.PHONE_PREPARATION_POINTS[GameState.current_room_id]
-	preparation_socket.z_index = int(preparation_socket.position.y)
+	preparation_socket.z_index = int(preparation_socket.position.y) - 1
 	room.add_child(preparation_socket)
-	var body := LevelGeometry.wall(preparation_socket, Rect2(-10, -5, 20, 8))
-	body.name = "PowerSocketBody"
+	# Compact wall-mounted power outlet (blended cleanly onto wall baseboard, never a floating floor boulder)
 	var art := Sprite2D.new()
 	art.texture = preload("res://assets/props/meter_connector_008.png")
-	art.position = Vector2(0, -11)
-	art.scale = Vector2(30, 25) / art.texture.get_size()
+	art.position = Vector2(0, -14)
+	art.scale = Vector2(18, 15) / art.texture.get_size()
+	art.modulate = Color(0.76, 0.78, 0.74, 0.85)
 	preparation_socket.add_child(art)
 	socket_hint = Label.new()
 	socket_hint.text = "[ E ] 接电"

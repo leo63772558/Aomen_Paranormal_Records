@@ -40,18 +40,28 @@ func _atlas(rect: Rect2) -> AtlasTexture:
 	return texture
 
 func _build_board() -> void:
+	# Real in-world darkened butcher-shop archive counter backdrop (no flat green screen)
+	var bg_tex := TextureRect.new()
+	bg_tex.position = Vector2.ZERO
+	bg_tex.size = size
+	bg_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg_tex.texture = load("res://assets/tilesets/ch3_archive_room_030.png")
+	bg_tex.modulate = Color(0.24, 0.21, 0.18, 1.0)
+	bg_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg_tex)
 	var wash := ColorRect.new()
 	wash.position = Vector2.ZERO
 	wash.size = size
-	wash.color = Color(0.035, 0.075, 0.059, 0.94)
+	wash.color = Color(0.05, 0.04, 0.03, 0.64)
 	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(wash)
 	var edge := Panel.new()
 	edge.position = Vector2(5, 5)
 	edge.size = Vector2(608, 320)
 	var skin := StyleBoxFlat.new()
-	skin.bg_color = Color(0.025, 0.052, 0.042, 0.96)
-	skin.border_color = Color("806e4e")
+	skin.bg_color = Color(0.06, 0.05, 0.04, 0.42)
+	skin.border_color = Color("8c744e")
 	skin.set_border_width_all(1)
 	edge.add_theme_stylebox_override("panel", skin)
 	edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -230,12 +240,14 @@ func _animate_balance(total: int) -> void:
 	if is_instance_valid(motion):
 		motion.kill()
 	var target := clampf(float(8 - total) * 0.025, -0.28, 0.24)
+	var delta_tilt := target - beam_pivot.rotation
 	motion = create_tween()
-	motion.set_trans(Tween.TRANS_BACK)
+	motion.set_trans(Tween.TRANS_SINE)
 	motion.set_ease(Tween.EASE_OUT)
-	motion.tween_property(beam_pivot, "rotation", target * 1.12, 0.16)
-	motion.tween_property(beam_pivot, "rotation", target * 0.84, 0.12)
-	motion.tween_property(beam_pivot, "rotation", target, 0.18)
+	motion.tween_property(beam_pivot, "rotation", target + delta_tilt * 0.24, 0.16)
+	motion.tween_property(beam_pivot, "rotation", target - delta_tilt * 0.12, 0.14)
+	motion.tween_property(beam_pivot, "rotation", target + delta_tilt * 0.05, 0.12)
+	motion.tween_property(beam_pivot, "rotation", target, 0.12)
 
 func submit_weight() -> void:
 	if solved_once:

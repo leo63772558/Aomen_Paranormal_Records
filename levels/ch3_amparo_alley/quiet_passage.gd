@@ -13,7 +13,8 @@ func _ready() -> void:
 	if GameState.current_room_id != ROOM_ID or not (GameState.opening_flags.ch3_cold_door_open and GameState.opening_flags.ch3_key_found and GameState.opening_flags.ch3_ticket_found):
 		push_error("Quiet passage requires the opened archive exit and its two items.")
 		return
-	AudioManager.set_scene_ambience("")
+	AudioManager.stop_chase_music()
+	AudioManager.set_scene_ambience("street")
 	var background = preload("res://core/components/room_tile_layer.gd").new()
 	background.background_texture = load("res://assets/tilesets/ch3_quiet_passage_open_167.png")
 	add_child(background)
@@ -21,8 +22,6 @@ func _ready() -> void:
 	ambient.color = Color("b8b4a1")
 	add_child(ambient)
 	_build_geometry()
-	preload("res://core/components/physics_prop.gd").spawn(self, "tin_can", Vector2(265, 224), Rect2(60, 165, 520, 165))
-	preload("res://core/components/physics_prop.gd").spawn(self, "glass_bottle", Vector2(420, 236), Rect2(60, 165, 520, 165))
 	player = preload("res://entities/player/player.tscn").instantiate()
 	player.visual_size_multiplier = 1.65
 	player.appearance = "flashlight"
@@ -96,29 +95,26 @@ func _enter_bus() -> void:
 	_close_panel()
 	player.controls_enabled = false
 	hud.prompt.text = ""
-	var layer := CanvasLayer.new()
-	layer.layer = 20
-	add_child(layer)
-	var curtain := ColorRect.new()
-	curtain.color = Color.BLACK
-	curtain.modulate.a = 0.0
-	curtain.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(curtain)
-	curtain.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var location: Label = hud.label("深夜 · 亚马喇前地", Vector2(120, 162), Vector2(400, 35), 19, Color("e1d7c2"), curtain)
-	location.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	location.add_theme_font_override("font", hud.root.get_theme_default_font())
-	var travel := create_tween()
-	travel.tween_property(curtain, "modulate:a", 1.0, 0.38).set_trans(Tween.TRANS_SINE)
-	travel.tween_interval(0.43)
-	await travel.finished
+	AudioManager.play_bus_pa("bus_driver_pa", -3.5)
+	var card := ChapterLandmarkTransition.play(
+		self,
+		"第四章 · 33 路末班车",
+		"逃离大关斜巷 → 经新马路步行至亚马喇前地巴士总站",
+		"浓雾中，唯一亮着惨绿灯牌的新福利 33 路（往黑沙海滩）缓缓靠站、折叠门嗤声开启……",
+		"踏上车阶时，司机没有回头。车厢里循环着低沉的扶手广播……",
+		"entrance_door",
+		"res://assets/ui/map_landmarks/stop_6_bridge_bus33.png"
+	)
+	await card.completed
 	if not is_inside_tree():
 		return
 	if GameState.request_room_change("ch4_bus_loop", "from_w17_ticket"):
 		GameState.save_transition_checkpoint()
 	else:
-		layer.queue_free()
+		if is_instance_valid(card):
+			card.dismiss()
 		leaving = false
+		player.controls_enabled = true
 		_say("暂时无法前往", "街面的路线暂时无法载入。大文仍留在后巷，请稍后重试。")
 
 func _say(title: String, body: String, choices: Array = []) -> void:

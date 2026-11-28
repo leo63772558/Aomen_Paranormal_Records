@@ -22,6 +22,91 @@ func frames(count := 4) -> void:
 	for _i in range(count):
 		await get_tree().process_frame
 
+func wait_for_progress(reached: Callable, frame_limit: int) -> bool:
+	for _i in range(frame_limit):
+		if reached.call():
+			return true
+		await get_tree().physics_frame
+	return reached.call()
+
+func aim_at(point: Vector2) -> void:
+	var motion := InputEventMouseMotion.new()
+	motion.position = point
+	motion.global_position = point
+	motion.relative = Vector2(0, -50)
+	get_viewport().push_input(motion, true)
+
+func interact() -> void:
+	var press := InputEventAction.new()
+	press.action = "interact"
+	press.pressed = true
+	Input.parse_input_event(press)
+	await frames(2)
+	var release := InputEventAction.new()
+	release.action = "interact"
+	Input.parse_input_event(release)
+	await frames(4)
+
+func walk_stair_retry(hall: Node) -> void:
+	check("小拱门" in hall.hud.objective.text, "retry points toward the stairs with the recorder already in the bag")
+	Input.action_press("move_right")
+	var at_arch: bool = await wait_for_progress(func(): return hall.player.position.x >= 456.0, 130)
+	Input.action_release("move_right")
+	check(at_arch, "walk from the retry spawn to the open arch")
+	aim_at(Vector2(460, 106))
+	await frames(18)
+	check(hall.selected_id == "bunker_deep", "the stair entrance offers its real interaction prompt")
+	await interact()
+	check(GameState.current_room_id == "ch2_hill_steps", "interact at the arch to restart the stairs")
+	if GameState.current_room_id != "ch2_hill_steps":
+		return
+	var stairs = get_tree().current_scene
+	var screen_feet: Vector2 = stairs.player.get_global_transform_with_canvas().origin
+	# One mouse movement sets aim. Both traversal directions use the same stationary cursor.
+	aim_at(screen_feet + Vector2(0, -116))
+	Input.action_press("move_up")
+	Input.action_press("sprint")
+	var reached_mark: bool = await wait_for_progress(func(): return stairs.steps_reached >= 89 or stairs.phase == stairs.Phase.LOST, 1400)
+	Input.action_release("sprint")
+	Input.action_release("move_up")
+	check(reached_mark and stairs.phase == stairs.Phase.DOWN and stairs.haunt_stage >= 3, "walk through all apparitions to the marked step without turning around")
+	if stairs.phase != stairs.Phase.DOWN:
+		return
+	await interact()
+	check(stairs.stair_art.marked, "mark the repeated missing corner through the E prompt")
+	Input.action_press("move_up")
+	var reached_loop: bool = await wait_for_progress(func(): return stairs.phase != stairs.Phase.DOWN, 170)
+	Input.action_release("move_up")
+	check(reached_loop and stairs.phase == stairs.Phase.LOOP, "reach the dead-end after marked step 89")
+	if stairs.phase != stairs.Phase.LOOP:
+		return
+	if DisplayServer.get_name() != "headless":
+		await RenderingServer.frame_post_draw
+		check(get_viewport().get_texture().get_image().save_png("res://docs/build_reports/stairs_loop_live_251.png") == OK, "real stair rollback view renders")
+	Input.action_press("move_down")
+	Input.action_press("sprint")
+	var passed_loop: bool = await wait_for_progress(func(): return stairs.phase != stairs.Phase.LOOP, 220)
+	check(passed_loop and stairs.phase == stairs.Phase.RETURN and stairs.player.look_dir.dot(Vector2.UP) > 0.9, "stationary cursor keeps the flashlight forward while S breaks the loop")
+	check(stairs.family.size() == 1 and stairs.family[0].active, "the live stair wraith pursues the return")
+	var reached_door: bool = await wait_for_progress(func(): return stairs._at_machine_room() or stairs.phase == stairs.Phase.LOST, 1410)
+	Input.action_release("sprint")
+	Input.action_release("move_down")
+	await frames(2)
+	check(reached_door and stairs._at_machine_room() and stairs.reverse_time == 0.0, "keep the same cursor position all the way to the safe door")
+	if not stairs._at_machine_room():
+		return
+	check("机房门" in stairs.hud.prompt.text, "the machine-room prompt appears in reach")
+	Input.action_press("move_up")
+	var left_door: bool = await wait_for_progress(func(): return not stairs._at_machine_room(), 70)
+	Input.action_release("move_up")
+	await frames(2)
+	check(left_door and stairs.hud.prompt.text.is_empty(), "the exit prompt disappears out of reach")
+	Input.action_press("move_down")
+	await wait_for_progress(func(): return stairs._at_machine_room(), 90)
+	Input.action_release("move_down")
+	await interact()
+	check(GameState.current_room_id == "ch2_bunker_hall" and GameState.opening_flags.hill_steps_completed and GameState.has_demo_item("bunker_recording"), "leave by the normal door with the recorder and pursuit completion saved")
+
 func run() -> void:
 	check(GameState.profile == "test", "isolated test profile")
 	GameState.reset_opening()
@@ -70,6 +155,7 @@ func run() -> void:
 	GameState.current_chapter_id = "ch2_guia_tunnel"
 	GameState.pending_entry_id = "from_hall"
 	GameState.demo_pursuit = "steps"
+	GameState.take_demo_item("bunker_recording")
 	var steps = load("res://levels/ch2_guia/hill_steps_014.tscn").instantiate()
 	get_tree().root.add_child(steps)
 	get_tree().current_scene = steps
@@ -93,7 +179,9 @@ func run() -> void:
 	check(get_tree().paused and steps.hud.panel_open and steps.hud.choice_buttons.size() == 1, "failed stair retry offers another attempt")
 	steps.hud.choice_buttons[0].pressed.emit()
 	await frames(8)
-	check(GameState.current_room_id == "ch2_bunker_ammo" and GameState.demo_pursuit == "", "stair retry returns to the correct safe room")
+	check(GameState.current_room_id == "ch2_bunker_hall" and GameState.demo_pursuit == "steps", "stair retry returns to the machine room and preserves the recorder route")
+	if GameState.current_room_id == "ch2_bunker_hall":
+		await walk_stair_retry(get_tree().current_scene)
 	get_tree().paused = false
 	get_tree().current_scene.queue_free()
 	await frames()

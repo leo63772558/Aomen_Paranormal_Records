@@ -11,7 +11,7 @@ const TARGETS := {
 }
 const NAMES := {
 	"entry": "沿楼梯返回救生站",
-	"arrow": "查看干燥通道上的粉笔箭头",
+	"arrow": "查看干燥通道上的壁面划痕",
 	"drain": "检查排水口的潮线与铁栅",
 	"thread": "查看圆井旁的布丝和金属擦痕",
 	"ladder": "检查圆井里的梯级"
@@ -41,7 +41,7 @@ func _ready() -> void:
 	if not GameState.opening_flags.beach_circuit_matched:
 		push_error("The coastal works route requires the verified maintenance plan.")
 		return
-	AudioManager.set_scene_ambience("crypt")
+	AudioManager.set_scene_ambience("coastal")
 	_build_background()
 	_build_geometry()
 	_build_hotspots()
@@ -62,14 +62,11 @@ func _ready() -> void:
 	hud.journal_note_provider = _journal_text
 	hud.close_requested.connect(_close_panel)
 	hud.pause_requested.connect(_pause_menu)
+	_update_objective()
 	if not GameState.opening_flags.coastal_intro_seen:
 		GameState.opening_flags.coastal_intro_seen = true
 		checkpoint()
-		hud.notify("墙上的粉笔箭头指向高处。")
-	else:
-		_update_objective()
-		if GameState.opening_flags.coastal_route_verified and GameState.pending_entry_id != "from_landing":
-			_say("回到井口", "井梯还在，沿梯可以继续下行。")
+		hud.notify("干燥通道拐角有鞋印和擦痕，一路通往高处圆井。")
 
 func _build_background() -> void:
 	var background := Sprite2D.new()
@@ -82,13 +79,6 @@ func _build_background() -> void:
 	var ambient := CanvasModulate.new()
 	ambient.color = Color("8b928a")
 	add_child(ambient)
-	drain_surge = Polygon2D.new()
-	drain_surge.polygon = PackedVector2Array([
-		Vector2(490, 520), Vector2(640, 520), Vector2(640, 680), Vector2(490, 680)
-	])
-	drain_surge.color = Color(0.18, 0.36, 0.34, 0.28)
-	drain_surge.z_index = -2
-	add_child(drain_surge)
 
 func _wall(rect: Rect2) -> void:
 	LevelGeometry.wall(self, rect)
@@ -204,17 +194,11 @@ func _inspect_evidence(id: String) -> void:
 		return
 	match id:
 		"arrow":
-			hud.show_resource_feedback("粉笔箭头指向上层的圆井。")
+			hud.show_resource_feedback("泥鞋印和墙沿擦痕通向上层的圆井。")
 		"drain":
 			hud.show_resource_feedback("低位铁栅锁着。这里只能排水。")
 		"thread":
 			hud.show_resource_feedback("螺栓上缠着嘉敏外套的红布。")
-
-func _use_three_room_coastal() -> bool:
-	for tag in ["057", "058", "059", "060", "225", "works", "silt", "press"]:
-		if tag in GameState.run_id:
-			return false
-	return true
 
 func _inspect_ladder() -> void:
 	if not GameState.opening_flags.coastal_route_verified:
@@ -222,13 +206,10 @@ func _inspect_ladder() -> void:
 		GameState.opening_flags.coastal_route_verified = true
 		checkpoint()
 		hud.notify("井边卡着一缕红布，嘉敏是从这里下去的。")
-	if _use_three_room_coastal():
-		for f in ["coastal_arrow_seen", "coastal_drain_seen", "coastal_thread_seen", "coastal_ladder_seen", "coastal_route_verified", "coastal_landing_seen", "coastal_lower_drain_seen", "coastal_shutter_seen", "coastal_crawlway_seen"]:
-			GameState.opening_flags[f] = true
-		checkpoint()
-		_descend_shaft("ch5_coastal_chamber", "from_landing")
-	else:
+	if GameState.uses_legacy_coastal_rooms():
 		_descend_shaft()
+	else:
+		_descend_shaft("ch5_coastal_chamber", "from_landing")
 
 func _descend_shaft(destination := "ch5_coastal_landing", entry_id := "from_shaft") -> void:
 	if transition_active:
@@ -253,8 +234,9 @@ func _descend_shaft(destination := "ch5_coastal_landing", entry_id := "from_shaf
 	await tween.finished
 	if not is_inside_tree(): return
 	if GameState.request_room_change(destination, entry_id):
-		# The destination marks and saves its first visit after it has loaded.
-		pass
+		if destination == "ch5_coastal_chamber":
+			GameState.mark_coastal_landing_passed()
+		GameState.save_transition_checkpoint()
 	else:
 		fade_layer.queue_free()
 		transition_active = false
@@ -270,7 +252,7 @@ func _all_route_evidence_seen() -> bool:
 	return true
 
 func _open_route_record() -> void:
-	_say("手札 · 沿海工事", _journal_text())
+	_say("现场线索 · 沿海工事", _journal_text())
 
 func _journal_text() -> String:
 	var lines: Array[String] = ["沿海工事 · 现场记录", ""]
@@ -278,7 +260,7 @@ func _journal_text() -> String:
 		var flag_id: String = EVIDENCE_FLAGS[id]
 		lines.append(("✓ " if GameState.opening_flags[flag_id] else "□ ") + NAMES[id])
 	if GameState.opening_flags.coastal_route_verified:
-		lines.append("\n上层通道、潮线与梯井痕迹已核对。路线成立，嘉敏的当前位置仍未知。")
+		lines.append("\n井边留下了红布和擦痕。沿井梯下行，继续找嘉敏。")
 	else:
 		lines.append("\n把纸上线路与现场方向、潮线和痕迹逐一对照。")
 	return "\n".join(lines)
@@ -338,11 +320,11 @@ func _return_to_beach() -> void:
 func _update_objective() -> void:
 	if not is_instance_valid(hud):
 		return
-	hud.state_text.text = "沿海工事     [ J ] 手札"
+	hud.state_text.text = "沿海工事     [ B ] 线索"
 	if GameState.opening_flags.coastal_route_verified:
 		hud.objective.text = "井梯线索已核对。靠近井口按 E 下行，继续追踪。"
 	else:
-		hud.objective.text = "跟着粉笔箭头上行，到圆井边按 E 下梯。"
+		hud.objective.text = "顺着干燥通道上行，到圆井边按 E 下梯。"
 
 func checkpoint() -> void:
 	if not GameState.save_opening_checkpoint() and is_instance_valid(hud):

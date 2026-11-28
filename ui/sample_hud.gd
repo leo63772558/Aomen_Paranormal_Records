@@ -23,8 +23,7 @@ func _ready() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var theme := Theme.new()
-	var font := SystemFont.new()
-	font.font_names = PackedStringArray(["Microsoft YaHei", "Noto Sans CJK SC"])
+	var font := UiFont.song()
 	theme.default_font = font
 	theme.default_font_size = 12
 	root.theme = theme
@@ -64,7 +63,7 @@ func _ready() -> void:
 	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(footer)
 	label("WASD 移动  ·  鼠标观察  ·  E 调查  ·  F 手电", Vector2(12, 338), Vector2(325, 16), 10, Color("9aafa5"))
-	label("Shift 跑  Ctrl 蹲  Q 手札  Esc 暂停", Vector2(408, 338), Vector2(230, 16), 10, Color("9aafa5"))
+	label("Shift 跑  Ctrl 蹲  B 背包  Esc 暂停", Vector2(408, 338), Vector2(230, 16), 10, Color("9aafa5"))
 	prompt = label("", Vector2(170, 289), Vector2(340, 22), 12, Color("f3dfaa"))
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	toast = label("", Vector2(105, 45), Vector2(430, 25), 12, Color("f0d2a0"))

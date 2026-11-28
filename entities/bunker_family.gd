@@ -14,7 +14,10 @@ var active := false
 var speed_scale := 1.0
 var look := Vector2.DOWN
 var pose: Sprite2D
+var blend_pose: Sprite2D
+var base_pose_scale := 1.0
 var frames: Array[AtlasTexture] = []
+var use_quad_front_cycle := false
 var route := PackedVector2Array()
 var repath := 0.0
 var gait := 0.0
@@ -28,7 +31,7 @@ func _ready() -> void:
 	add_child(flash_receiver)
 	flash_receiver.stunned.connect(func(): route.clear(); repath = 0.0)
 	collision_layer = 4
-	collision_mask = 1
+	collision_mask = 33
 	var hull := CircleShape2D.new()
 	hull.radius = 6 if role_id == 2 else 8
 	var collision := CollisionShape2D.new()
@@ -45,10 +48,19 @@ func _ready() -> void:
 	pose = Sprite2D.new()
 	pose.texture = frames[0]
 	var height: float = ROLE_HEIGHT[role_id]
-	pose.scale = Vector2.ONE * height / float(ROW_HEIGHT[role_id])
+	base_pose_scale = height / float(ROW_HEIGHT[role_id])
+	pose.scale = Vector2.ONE * base_pose_scale
 	pose.position = Vector2(0, -height * 0.5 + 1.0)
 	add_child(pose)
+	blend_pose = Sprite2D.new()
+	blend_pose.texture = frames[1]
+	blend_pose.scale = pose.scale
+	blend_pose.position = pose.position
+	blend_pose.modulate.a = 0.0
+	add_child(blend_pose)
 	z_index = int(position.y)
+	if role_id == 0:
+		GhostTaunt.attach(self, PackedStringArray(["那三个人死了……", "终于来了……你终于来了……", "门锁上了，你出不去了……", "你完蛋了……"]), 2.8)
 
 func _physics_process(delta: float) -> void:
 	if not active or not is_instance_valid(target):
@@ -78,37 +90,66 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	var distance := global_position.distance_to(before)
 	_pose_for(direction, distance, delta)
-	if flash_receiver.may_catch(target) and global_position.distance_to(target.global_position) <= (13.0 if role_id == 2 else 16.0):
+	if flash_receiver.may_catch(target) and global_position.distance_to(target.global_position) <= (22.0 if role_id == 2 else 24.0):
 		active = false
 		velocity = Vector2.ZERO
 		caught.emit(role_id)
 
 func _pose_for(direction: Vector2, distance: float, delta: float) -> void:
-	if distance < 0.1:
+	if distance < 0.04:
 		return
-	gait += delta * (6.4 if role_id == 2 else 4.1 + role_id)
-	look = direction
-	if absf(look.x) > absf(look.y) * 0.85:
+	gait += delta * (7.2 if role_id == 2 else 5.2 + role_id * 0.6)
+	look = look.lerp(direction, 1.0 - exp(-16.0 * delta)).normalized()
+	var cycle := 0.5 + 0.5 * sin(gait * TAU)
+	if use_quad_front_cycle and frames.size() >= 4:
+		var phase_f := fmod(gait * 2.0, 4.0)
+		var f0 := int(floor(phase_f)) % 4
+		var f1 := (f0 + 1) % 4
+		pose.texture = frames[f0]
+		blend_pose.texture = frames[f1]
+		pose.flip_h = false
+		blend_pose.flip_h = false
+		blend_pose.modulate.a = clampf(phase_f - floor(phase_f), 0.0, 1.0)
+	elif absf(look.x) > absf(look.y) * 0.92:
 		pose.texture = frames[2]
+		blend_pose.texture = frames[0]
 		pose.flip_h = look.x < 0
-	elif look.y < 0:
+		blend_pose.flip_h = pose.flip_h
+		blend_pose.modulate.a = cycle * 0.38
+	elif look.y < -0.35:
 		pose.texture = frames[3]
-		pose.flip_h = false
+		blend_pose.texture = frames[2]
+		pose.flip_h = look.x < 0
+		blend_pose.flip_h = pose.flip_h
+		blend_pose.modulate.a = cycle * 0.34
 	else:
-		pose.texture = frames[int(gait * 2.0) % 2]
-		pose.flip_h = false
-	pose.position.y = -float(ROLE_HEIGHT[role_id]) * 0.5 + 1.0 + sin(gait * TAU) * 1.6
+		pose.texture = frames[0]
+		blend_pose.texture = frames[1]
+		pose.flip_h = look.x < -0.25
+		blend_pose.flip_h = pose.flip_h
+		blend_pose.modulate.a = cycle
+	var bob_y := -float(ROLE_HEIGHT[role_id]) * 0.5 + 1.0 + sin(gait * TAU) * 2.1
+	var squash := 1.0 + sin(gait * TAU * 2.0) * 0.036
+	var stretch := 1.0 - sin(gait * TAU * 2.0) * 0.024
+	var target_rot := clampf(look.x * 0.08 + sin(gait * TAU) * 0.042, -0.14, 0.14)
+	pose.rotation = lerpf(pose.rotation, target_rot, 1.0 - exp(-16.0 * delta))
+	pose.scale = Vector2(base_pose_scale * stretch, base_pose_scale * squash)
+	pose.position.y = bob_y
 	var near_dist := global_position.distance_to(target.global_position) if is_instance_valid(target) else 999.0
 	if not GameState.reduced_flash and near_dist < 130.0:
-		pose.position.x = sin(gait * 19.0 + role_id) * (1.8 if role_id == 2 else 1.2)
+		pose.position.x = sin(gait * 14.0 + role_id) * (1.5 if role_id == 2 else 1.0)
 		pose.modulate = Color(1.0, 0.82, 0.80, 1.0)
 	else:
 		pose.position.x = 0.0
 		pose.modulate = Color.WHITE
+	if is_instance_valid(blend_pose):
+		blend_pose.position = pose.position
+		blend_pose.rotation = pose.rotation
+		blend_pose.scale = pose.scale
 	z_index = int(position.y)
 	afterimage_timer -= delta
 	if afterimage_timer <= 0.0 and not GameState.reduced_flash:
-		afterimage_timer = 0.16 + role_id * 0.03
+		afterimage_timer = 0.11 + role_id * 0.02
 		_spawn_afterimage()
 	hearing -= delta
 	if hearing <= 0:

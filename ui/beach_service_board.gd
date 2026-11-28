@@ -17,9 +17,11 @@ var spring_lift := 0.0
 var trace: Line2D
 var trace_progress := 0
 var latch_lifted := false
+const BEACH_BG := preload("res://assets/tilesets/hacsa_beach_038.png")
 const ROUTE := [Vector2(65, 140), Vector2(158, 140), Vector2(158, 160), Vector2(232, 160), Vector2(232, 125), Vector2(340, 125)]
-const LIGHT_TABS := [Rect2(65, 254, 55, 32), Rect2(183, 276, 72, 32), Rect2(311, 254, 55, 32)]
+const LIGHT_TABS := [Rect2(56, 260, 72, 26), Rect2(187, 276, 72, 26), Rect2(318, 260, 72, 26)]
 const LOW_DRAIN_ENTRY := Rect2(62, 179, 50, 52)
+var anim_clock := 0.0
 
 static func shaft_mark() -> Node2D:
 	var mark := Node2D.new()
@@ -89,6 +91,38 @@ func _ready() -> void:
 		"car": _build_switch()
 		"plan": _build_plan()
 
+func _process(delta: float) -> void:
+	anim_clock += delta
+	queue_redraw()
+
+func _draw() -> void:
+	var pulse := 0.5 + 0.5 * sin(anim_clock * 4.2)
+	# Atmospheric darkened Hac Sa Beach midnight backdrop instead of flat default panel
+	draw_texture_rect(BEACH_BG, Rect2(Vector2.ZERO, size), false, Color(0.24, 0.28, 0.27, 1.0))
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.03, 0.05, 0.05, 0.74))
+	# Recessed vintage info panel behind right-side status instructions
+	draw_rect(Rect2(394, 48, 212, 244), Color(0.05, 0.09, 0.08, 0.88))
+	draw_rect(Rect2(394, 48, 212, 244), Color("5b695d"), false, 1.0)
+	if mode == "car":
+		# Sleek riveted dark-brass car dashboard bezel & etched detent plates (no clunky overlapping corner boxes!)
+		draw_rect(Rect2(44, 42, 344, 258), Color(0.05, 0.065, 0.06, 0.72))
+		draw_rect(Rect2(44, 42, 344, 258), Color("665a42"), false, 1.4)
+		for i in range(LIGHT_TABS.size()):
+			var tab: Rect2 = LIGHT_TABS[i]
+			var active := (knob_mode == i)
+			draw_rect(tab, Color("1d2922") if active else Color("101513"))
+			draw_rect(tab, Color("d8bf78") if active else Color("4c524a"), false, 1.4 if active else 1.0)
+			# Small embedded amber/emerald automotive indicator LED beside active detent
+			var led_p := Vector2(tab.position.x + 11.0, tab.get_center().y)
+			draw_circle(led_p, 3.2, Color("141715"))
+			var led_col := Color("62c87a") if (active and i == 2) else (Color("d8a94e") if active else Color("2b302d"))
+			draw_circle(led_p, 2.2, led_col)
+	elif mode == "key_box":
+		if openness < 0.95:
+			draw_rect(Rect2(138, 44, 232, 228), Color(0.95, 0.84, 0.50, 0.28 + 0.42 * pulse), false, 2.0)
+		elif is_instance_valid(key_sprite) and key_sprite.visible:
+			draw_arc(Vector2(255, 171), 42.0 + pulse * 4.0, 0.0, TAU, 24, Color(0.96, 0.84, 0.48, 0.45 + 0.4 * pulse), 1.8, true)
+
 func _label(value: String, at: Vector2, font_size: int) -> Label:
 	var label := Label.new()
 	label.text = value
@@ -126,7 +160,7 @@ func _build_key_box() -> void:
 	openness = 1.0 if GameState.opening_flags.beach_key_box_open else 0.0
 	lift = 1.0 if openness > 0 else 0.0
 	_set_lid_pose()
-	status.text = "点一下箱盖提起止扣，再点一下向右打开。也可以按住，先上提再右拉。"
+	status.text = "按住箱盖先向上提起，再向左拉开（或点两下箱盖直接打开）。"
 	if openness >= 0.95:
 		status.text = "箱盖已经打开。挂钩上的黄铜钥匙可以直接取下。"
 	_label("开盖后点击挂钩上的钥匙", Vector2(18, 287), 12)
@@ -134,19 +168,22 @@ func _build_key_box() -> void:
 func _set_lid_pose() -> void:
 	lid_hinge.position.y = 47 - lift * 6
 	lid_hinge.scale.x = 1.0 - openness * 0.93
-	lid_hinge.skew = -openness * 0.12
-	lid_hinge.modulate = Color.WHITE.darkened(openness * 0.17)
+	lid_hinge.skew = 0.0
+	lid_hinge.modulate = Color.WHITE.darkened(openness * 0.15)
 
 func _build_switch() -> void:
-	_sprite(_clean_part(2), Vector2(223, 159), 235)
-	pointer = _sprite(_clean_part(3), Vector2(223, 166), 128)
-	pointer.offset.y = -40
+	# Center rotary switch plate & pointer precisely on hub (223, 152) with balanced stem pivot (zero eccentric orbiting!)
+	_sprite(_clean_part(2), Vector2(223, 152), 212)
+	pointer = _sprite(_clean_part(3), Vector2(223, 152), 110)
+	pointer.offset.y = -14
 	knob_mode = 2 if GameState.opening_flags.beach_headlights_on else (1 if GameState.opening_flags.beach_parking_lights_on else 0)
 	pointer.rotation = (knob_mode - 1) * PI / 3.0
-	_label("关闭", Vector2(75, 267), 14)
-	_label("位置灯", Vector2(193, 287), 14)
-	_label("远光", Vector2(321, 267), 14)
-	status.text = "点击下方「远光」，或拖动旋钮转到右档。远光能照亮水边的退路。"
+	var l0 := _label("关闭", Vector2(76, 265), 12)
+	var l1 := _label("示宽灯", Vector2(204, 281), 12)
+	var l2 := _label("远光", Vector2(338, 265), 12)
+	for lbl in [l0, l1, l2]:
+		lbl.add_theme_color_override("font_color", Color("e8dcc0"))
+	status.text = "点击下方「远光」档位，或按住旋转车灯总成旋钮至右档。强远光能劈开黑沙水边的浓雾。"
 
 func _build_plan() -> void:
 	var image := TextureRect.new()
@@ -218,7 +255,7 @@ func _gui_input(event: InputEvent) -> void:
 						latch_lifted = true
 						lift = 1.0
 						_set_lid_pose()
-						status.text = "止扣已提起。再点箱盖，向右推开。"
+						status.text = "止扣已提起。再点箱盖，向左推开。"
 						AudioManager.play_world_effect("lock_mechanism")
 				else:
 					latch_lifted = false
@@ -232,11 +269,11 @@ func _gui_input(event: InputEvent) -> void:
 			"key_box":
 				var displacement: Vector2 = event.position - grab_origin
 				lift = maxf(lift, clampf(-displacement.y / 18.0, 0, 1))
-				if lift >= 0.95: openness = clampf(displacement.x / 130.0, 0, 1)
+				if lift >= 0.95: openness = clampf(absf(displacement.x) / 115.0, 0, 1)
 				_set_lid_pose()
 				if openness >= 0.95:
 					_open_key_box()
-			"car": pointer.rotation = clampf((event.position - Vector2(223, 166)).angle() + PI * 0.5, -PI / 3.0, PI / 3.0)
+			"car": pointer.rotation = clampf((event.position - Vector2(223, 152)).angle() + PI * 0.5, -PI / 3.0, PI / 3.0)
 			"plan": _follow_route(event.position)
 		accept_event()
 

@@ -156,6 +156,7 @@ func seed_beach_route() -> void:
 
 func run() -> void:
 	check(GameState.profile == "test", "isolated test profile")
+	GameState.legacy_coastal_qa = true
 	seed_beach_route()
 	scene = load("res://levels/ch5_hacsa_beach/beach_scene.tscn").instantiate()
 	get_tree().root.add_child(scene)

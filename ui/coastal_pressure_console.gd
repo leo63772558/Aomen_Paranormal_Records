@@ -3,6 +3,7 @@ extends Control
 const IDS := ["inlet", "bypass", "bleed"]
 const WHEEL_CENTERS := [Vector2(108, 150), Vector2(318, 112), Vector2(318, 224)]
 const NEEDLE_ANGLES := [1.04, 0.44, -0.40, -1.04]
+const CONSOLE_PLATE := preload("res://assets/props/coastal_console_plate_v10.png")
 const MACHINERY := preload("res://assets/tilesets/coastal_pressure_gallery_060.png")
 const FEED := [Vector2(38, 150), Vector2(203, 150)]
 const BYPASS := [Vector2(203, 150), Vector2(203, 112), Vector2(393, 112)]
@@ -36,11 +37,11 @@ func setup(scene: Node2D) -> Control:
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	_label("调压台", Vector2(24, 12), 22)
-	_label("压力归零，检修柜才会解锁。", Vector2(125, 18), 14)
+	_label("调压台", Vector2(24, 9), 22)
+	_label("压力归零，检修柜才会解锁。", Vector2(125, 15), 14)
 	_label("来水", Vector2(29, 104), 13)
 	_label("分流", Vector2(367, 76), 13)
-	_label("侧沟", Vector2(497, 259), 13)
+	_label("侧沟", Vector2(497, 254), 13)
 
 	var wheel_regions := [
 		Rect2(346, 298, 113, 113),
@@ -74,10 +75,14 @@ func _ready() -> void:
 			sp.material = _round_crop(region, false)
 			wheel = sp
 		else:
-			wheel = _make_hd_bleed_valve(center)
+			# Authentic painted oxidized-bronze cast-iron bleed handwheel (ZERO flat yellow cartoon wagon wheel!)
+			var sp3 := _art(wheel_regions[1], center, Vector2.ONE * 62.0)
+			sp3.material = _round_crop(wheel_regions[1], false)
+			sp3.modulate = Color(1.06, 0.90, 0.72, 1.0)
+			wheel = sp3
 		wheels.append(wheel)
 
-		var nameplate := _label("", center + Vector2(-56, 36 if index == 0 else -65), 14)
+		var nameplate := _label("", center + Vector2(-56, 36 if index == 0 else -56), 14)
 		if index == 2:
 			nameplate.position.y = center.y + 30
 		nameplate.size.x = 112
@@ -111,6 +116,10 @@ func _label(value: String, at: Vector2, font_size: int) -> Label:
 	label.text = value
 	label.position = at
 	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", Color("ece6cf"))
+	label.add_theme_color_override("font_shadow_color", Color("07100c"))
+	label.add_theme_constant_override("shadow_offset_x", 1)
+	label.add_theme_constant_override("shadow_offset_y", 1)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(label)
 	return label
@@ -294,46 +303,78 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	for route in [FEED, BYPASS, DRAIN]:
-		draw_polyline(PackedVector2Array(route), Color("121716"), 14, true)
-		draw_polyline(PackedVector2Array(route), Color("70604b"), 11, true)
-		draw_polyline(PackedVector2Array(route), Color("28332c"), 7, true)
-	draw_circle(Vector2(203, 150), 7.0, Color("85715a"), true, -1.0, true)
-	draw_circle(Vector2(393, 112), 6.0, Color("887458"), true, -1.0, true)
-	# Crisp high-res stone drainage trough with iron grate bars (replaces blurry crop).
-	var trough := Rect2(448, 208, 144, 46)
-	draw_rect(trough, Color("1a211e"), true)
-	draw_rect(Rect2(452, 213, 136, 36), Color("26322d"), true)
-	for gx in range(462, 584, 14):
-		draw_line(Vector2(gx, 211), Vector2(gx - 4, 251), Color("4e564e"), 2.2, true)
-	draw_rect(trough, Color("78684b"), false, 2.2)
+	# Authentic weathered dark-iron pressure console housing with 3D shaded cast-iron pipes & brass gauge mount
+	draw_texture_rect(CONSOLE_PLATE, Rect2(Vector2.ZERO, size), false)
+	draw_rect(Rect2(0, 0, size.x, 42), Color(0.02, 0.038, 0.032, 0.92), true)
+	draw_line(Vector2(14, 42), Vector2(size.x - 14, 42), Color("8e7a54"), 1.3, true)
+	# Corner brass industrial plaque rivets
+	for rx in [12.0, size.x - 12.0]:
+		for ry in [10.0, 32.0, 286.0, 314.0]:
+			draw_circle(Vector2(rx, ry), 2.5, Color("665535"))
+			draw_circle(Vector2(rx - 0.5, ry - 0.5), 1.1, Color("bfa772"))
+
+	# Deep cast-iron recessed shadows + brushed brass collar flanges under all 3 valve handwheels
+	for idx in range(3):
+		var c: Vector2 = WHEEL_CENTERS[idx]
+		var r_hub := 37.0 if idx < 2 else 34.0
+		draw_circle(c + Vector2(3.5, 5.0), r_hub, Color(0.01, 0.015, 0.012, 0.70))
+		draw_arc(c, r_hub - 2.0, 0.0, TAU, 36, Color("5a4b32", 0.72), 2.4, true)
+		draw_arc(c, r_hub - 5.0, 0.0, TAU, 36, Color("9c8559", 0.50), 1.0, true)
+
+	# Recessed vintage brass gauge housing bezel
+	draw_circle(Vector2(520, 121), 56.0, Color(0.02, 0.03, 0.025, 0.76))
+	draw_circle(Vector2(518, 119), 54.0, Color(0.06, 0.08, 0.07, 0.90))
+	draw_arc(Vector2(518, 119), 54.0, 0.0, TAU, 40, Color("aa9263"), 2.4, true)
+	draw_arc(Vector2(518, 119), 49.0, 0.0, TAU, 40, Color("483c28"), 1.5, true)
+	draw_arc(Vector2(518, 119), 46.0, -PI * 0.85, -PI * 0.15, 24, Color(0.95, 0.90, 0.74, 0.22), 1.4, true)
+	# Dark bottom status console strip
+	draw_rect(Rect2(14, 280, size.x - 28, 42), Color(0.022, 0.044, 0.038, 0.94), true)
+	draw_rect(Rect2(14, 280, size.x - 28, 42), Color(0.60, 0.52, 0.36, 0.78), false, 1.1)
 
 
 func _draw_details(canvas: Control) -> void:
 	if stage == 0:
-		_draw_flow(canvas, FEED, false, Color("c9b288"))
+		_draw_flow(canvas, FEED, false, Color("d4bc90"))
 	if stage == 2 or (turning == 1 and not resisted):
-		_draw_flow(canvas, BYPASS, false, Color("acc0a8"))
+		_draw_flow(canvas, BYPASS, false, Color("b4ccb2"))
 	if turning == 2 and not resisted or drain_runoff > 0.0:
-		_draw_flow(canvas, DRAIN, false, Color("b3c9bb"))
-		_draw_flow(canvas, [Vector2(467, 224), Vector2(582, 242)], false, Color("acc1b1"))
+		_draw_flow(canvas, DRAIN, false, Color("b8d3c2"))
+		_draw_flow(canvas, [Vector2(467, 224), Vector2(582, 242)], false, Color("b2cbb8"))
 	elif turning >= 1 and resisted:
 		var rejected_route: Array = BYPASS if turning == 1 else DRAIN
-		_draw_flow(canvas, rejected_route, true, Color("d99774"))
+		_draw_flow(canvas, rejected_route, true, Color("e39973"))
 
 	var pivot := Vector2(518, 119)
-	canvas.draw_circle(pivot, 40, Color("352f25"), true, -1.0, true)
+	canvas.draw_circle(pivot, 42.0, Color("1a1812"), true, -1.0, true)
+	canvas.draw_arc(pivot, 42.0, 0.0, TAU, 36, Color("726142"), 1.7, true)
+	# Red danger arc on upper-right zone + safe cyan arc on left zone
+	canvas.draw_arc(pivot, 33.0, -1.57 + 0.35, -1.57 + 1.12, 16, Color("b43c30", 0.85), 3.0, true)
+	canvas.draw_arc(pivot, 33.0, -1.57 - 1.12, -1.57 - 0.35, 16, Color("5a9c78", 0.75), 2.5, true)
 	for index in range(11):
 		var angle := lerpf(-1.08, 1.08, index / 10.0)
 		var outward := Vector2.UP.rotated(angle)
-		var tint := Color("d5ae80") if index < 8 else Color("bd7d62")
-		canvas.draw_line(pivot + outward * 29.0, pivot + outward * 35.0, tint, 1.7, true)
-	var tremble := sin(flow_clock * 27.0) * (0.025 * float(3 - stage)) if (stage < 3 and turning < 0 and not GameState.reduced_flash) else 0.0
-	canvas.draw_line(pivot, pivot + Vector2.UP.rotated(gauge_angle + tremble) * 30.0, Color("f3dfab"), 2.5, true)
-	canvas.draw_circle(pivot, 4.0, Color("e7cf99"), true, -1.0, true)
+		var tint := Color("c8b282") if index < 8 else Color("cf4b3c")
+		canvas.draw_line(pivot + outward * 27.0, pivot + outward * 36.0, tint, 2.0 if index % 2 == 0 else 1.2, true)
+	var gfont := get_theme_default_font()
+	canvas.draw_string(gfont, pivot + Vector2(-14, 18), "kPa", HORIZONTAL_ALIGNMENT_CENTER, 28, 8, Color("9a8d6e"))
+	canvas.draw_string(gfont, pivot + Vector2(-24, -14), "0", HORIZONTAL_ALIGNMENT_LEFT, 14, 7, Color("7eb894"))
+	canvas.draw_string(gfont, pivot + Vector2(14, -14), "6", HORIZONTAL_ALIGNMENT_RIGHT, 14, 7, Color("d86552"))
+	var tremble := sin(flow_clock * 27.0) * (0.028 * float(3 - stage)) if (stage < 3 and turning < 0 and not GameState.reduced_flash) else 0.0
+	var ndir := Vector2.UP.rotated(gauge_angle + tremble)
+	var nside := Vector2(-ndir.y, ndir.x)
+	canvas.draw_line(pivot + Vector2(1.5, 2.0), pivot + ndir * 30.0 + Vector2(1.5, 2.0), Color(0, 0, 0, 0.48), 2.6, true)
+	canvas.draw_colored_polygon(PackedVector2Array([
+		pivot - ndir * 5.0 - nside * 2.4, pivot - ndir * 5.0 + nside * 2.4,
+		pivot + ndir * 32.0 + nside * 0.6, pivot + ndir * 32.0 - nside * 0.6
+	]), Color("dfd09c"))
+	canvas.draw_line(pivot + ndir * 20.0, pivot + ndir * 32.0, Color("cb3f30"), 1.9, true)
+	canvas.draw_circle(pivot, 5.4, Color("5a4a2e"), true, -1.0, true)
+	canvas.draw_circle(pivot, 2.8, Color("c9aa6e"), true, -1.0, true)
+	# Subtle curved glass lens highlight over dial
+	canvas.draw_arc(pivot + Vector2(-6, -6), 28.0, -PI * 0.9, -PI * 0.2, 18, Color(1.0, 0.98, 0.90, 0.14), 2.5, true)
 	for p in steam_puffs:
 		var c := Color(p["color"])
-		c.a = clampf(float(p["life"]) / float(p["max_life"]), 0.0, 1.0) * 0.42
+		c.a = clampf(float(p["life"]) / float(p["max_life"]), 0.0, 1.0) * 0.48
 		canvas.draw_circle(Vector2(p["pos"]), float(p["radius"]), c)
 
 

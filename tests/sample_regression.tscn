@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://levels/ch0_tanglau/sample_room.tscn" id="1"]
+[ext_resource type="Script" path="res://tests/sample_regression.gd" id="2"]
+
+[node name="SampleRegression" instance=ExtResource("1")]
+
+[node name="Regression" type="Node" parent="."]
+script = ExtResource("2")

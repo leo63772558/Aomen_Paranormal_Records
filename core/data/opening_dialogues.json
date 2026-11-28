@@ -3,54 +3,72 @@
     "speaker": "黄嘉敏",
     "cantonese": "往后退两步嘛，把后面的大三巴牌坊也拍进去！",
     "subtitle": "往后退两步嘛，把后面的大三巴牌坊也拍进去！",
-    "audio": null
+    "audio": "jiamin_photo_invite"
   },
   "photo_done": {
     "speaker": "黄嘉敏",
     "cantonese": "这张构图不错！陈大师傅今天总算没手抖。",
     "subtitle": "这张构图不错！陈大师傅今天总算没手抖。",
-    "audio": null
+    "audio": "jiamin_photo_done"
   },
   "pastry_offer": {
     "speaker": "黄嘉敏",
     "cantonese": "奖励你的。刚出炉的安德鲁葡挞，还烫手呢，趁热吃。",
     "subtitle": "奖励你的。刚出炉的安德鲁葡挞，还烫手呢，趁热吃。",
-    "audio": null
+    "audio": "jiamin_pastry_offer"
   },
   "pastry_reply": {
     "speaker": "陈大文",
     "cantonese": "说好来澳门吃葡挞和猪扒包，怎么又变成钻荒废旧酒店了？",
-    "subtitle": "大文：说好来吃葡挞，怎么又变成钻荒废旧楼了？\n嘉敏：就看半小时！听说 304 床后那条暗道直通大三巴地底墓室，拍完立刻去吃水蟹粥。",
-    "audio": null
+    "subtitle": "说好来澳门吃葡挞和猪扒包，怎么又变成钻旧楼了？",
+    "next": "pastry_plan",
+    "audio": "dawen_pastry_reply"
+  },
+  "pastry_plan": {
+    "speaker": "黄嘉敏",
+    "subtitle": "就看半小时。有人说 304 床后的暗门通到大三巴地下。拍完去吃水蟹粥，我请。",
+    "audio": "jiamin_pastry_plan"
   },
   "knock": {
     "speaker": "黄嘉敏",
     "cantonese": "旧楼里没信号。万一走散了，就敲两下、停一停、再敲一下。",
-    "subtitle": "嘉敏：旧楼没信号。万一走散了，就按老规矩敲两下、停一停、再敲一下。\n大文：两短一长。记住了，紧跟在我后面，不准乱跑。",
-    "audio": null
+    "subtitle": "旧楼里没信号。要是走散了，就按老规矩，敲两下，停一停，再敲一下。",
+    "next": "knock_reply",
+    "audio": "jiamin_knock"
+  },
+  "knock_reply": {
+    "speaker": "陈大文",
+    "subtitle": "两下，再一下。记住了。楼里看不清，别走太快。",
+    "audio": "dawen_knock_reply"
   },
   "enter": {
     "speaker": "黄嘉敏",
     "cantonese": "我先上 304！大文你修一楼电表，阿豪去二楼半合备用闸。",
-    "subtitle": "嘉敏：我先拿手电上 304！大文你看看一楼电表。\n阿豪：姐夫，我去二楼半后廊合备用闸刀，弄完马上回楼梯口找你！",
-    "audio": null
+    "subtitle": "我拿手电先上 304。大文，你看看一楼电表。",
+    "next": "enter_ahhao",
+    "audio": "jiamin_enter"
+  },
+  "enter_ahhao": {
+    "speaker": "黄梓豪",
+    "subtitle": "姐夫，我去二楼半的后廊合备用闸。弄好了，楼梯口见。",
+    "audio": "ahhao_enter"
   },
   "foyer": {
     "speaker": "陈大文",
     "cantonese": "楼梯全黑了……先用工具钳拆开墙边的电表箱看看。",
     "subtitle": "楼梯全黑了……先用工具钳拆开墙边的电表箱看看。",
-    "audio": null
+    "audio": "dawen_foyer"
   },
   "meter": {
     "speaker": "陈大文",
     "cantonese": "三楼支路断了。先拆盖检查测试表和值班台备件。",
     "subtitle": "三楼支路断了。先拆盖检查测试表和值班台备件。",
-    "audio": null
+    "audio": "dawen_meter"
   },
   "stairs": {
     "speaker": "陈大文",
     "cantonese": "嘉敏还在三楼等我，先把楼梯灯修亮再上去。",
     "subtitle": "嘉敏还在三楼等我，先把楼梯灯修亮再上去。",
-    "audio": null
+    "audio": "dawen_stairs"
   }
 }

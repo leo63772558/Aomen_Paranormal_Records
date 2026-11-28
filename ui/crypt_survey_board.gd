@@ -5,12 +5,15 @@ signal aligned
 const PHOTO_RECT := Rect2(12, 45, 388, 225)
 const PLAN_TRAY := Rect2(411, 46, 193, 102)
 const DOODLE_TRAY := Rect2(411, 163, 193, 108)
+const TABLE_BG := preload("res://assets/tilesets/crypt_entrance_013.png")
 const GUIDE_ORIGIN := Vector2(208, 164)
 const STRIP := Vector2(329, 139)
 const MARK := Vector2(-50, -37)
 const JAMB := Vector2(128, -23)
 const EVIDENCE := [Vector2(159, 124), Vector2(336, 142)]
 const BAY_POINTS := [Vector2(159, 96), Vector2(208, 94), Vector2(254, 96)]
+const ROT_LEFT_BTN := Rect2(14, 271, 88, 21)
+const ROT_RIGHT_BTN := Rect2(108, 271, 88, 21)
 const ANGLE_STEP := PI / 12.0
 const LANDMARK_TOLERANCE := 16.0
 var photo: Texture2D
@@ -23,7 +26,8 @@ var turn_motion: Tween
 var dragging := false
 var fitted := false
 var done := false
-var status := "拖动描图，让三斜痕和侧门框同时重合。右键或滚轮旋转。"
+var pulse_clock := 0.0
+var status := "① 将右侧透明测绘描图拖至左图，用右键/滚轮旋转，令三斜痕与侧门框重合。"
 var focus_suspended := false
 var focus_previous_mode := Node.PROCESS_MODE_INHERIT
 
@@ -44,9 +48,16 @@ func _notification(what: int) -> void:
 
 func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_STOP
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	photo = DemoItems.texture("crypt_old_photo")
 	plan = DemoItems.texture("crypt_survey")
 	doodle = DemoItems.texture("crypt_doodle")
+
+func _process(delta: float) -> void:
+	if focus_suspended:
+		return
+	pulse_clock += delta
+	queue_redraw()
 
 func _gui_input(event: InputEvent) -> void:
 	if done:
@@ -66,6 +77,14 @@ func _gui_input(event: InputEvent) -> void:
 	if event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if event.pressed:
+		if not fitted and ROT_LEFT_BTN.has_point(event.position):
+			_turn_to(sheet_angle - ANGLE_STEP)
+			accept_event()
+			return
+		if not fitted and ROT_RIGHT_BTN.has_point(event.position):
+			_turn_to(sheet_angle + ANGLE_STEP)
+			accept_event()
+			return
 		if fitted:
 			_choose_bay(event.position)
 		elif PLAN_TRAY.has_point(event.position) or Rect2(sheet_center - STRIP * 0.5, STRIP).has_point(event.position):
@@ -114,22 +133,40 @@ func _choose_bay(point: Vector2) -> void:
 
 func _draw() -> void:
 	var font := get_theme_default_font()
-	draw_rect(Rect2(Vector2.ZERO, size), Color("16251f"))
-	draw_string(font, Vector2(16, 24), "地宫 · 核对改建前后的石壁", HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color("f0dfb0"))
-	draw_string(font, Vector2(522, 23), "Esc 返回", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("c0c9b6"))
+	var pulse := 0.5 + 0.5 * sin(pulse_clock * 4.2)
+	# Real stone-crypt close-up table backdrop instead of flat green box
+	draw_texture_rect(TABLE_BG, Rect2(Vector2.ZERO, size), false, Color(0.24, 0.27, 0.24, 1.0))
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.03, 0.05, 0.04, 0.72))
+	draw_string(font, Vector2(16, 25), "大三巴地宫 · 1961 掘骨石壁与旧测绘叠图核验", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("f0dfb0"))
+	draw_string(font, Vector2(522, 24), "右上返回" if GameState.touch_mode_active else "Esc 返回", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("c0c9b6"))
+	# Vintage parchment frames with soft depth shadow
+	for frame in [PHOTO_RECT.grow(3), PLAN_TRAY.grow(3), DOODLE_TRAY.grow(3)]:
+		draw_rect(Rect2(frame.position + Vector2(2, 3), frame.size), Color(0, 0, 0, 0.55))
+		draw_rect(frame, Color("1a1814"))
+		draw_rect(frame, Color("8a7a56"), false, 1.4)
 	draw_texture_rect(photo, PHOTO_RECT, false)
 	draw_texture_rect(plan, PLAN_TRAY, false)
 	draw_texture_rect(doodle, DOODLE_TRAY, false)
-	draw_string(font, Vector2(415, 158), "描图 · 拖动 / 右键粗转 / 滚轮微调", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("e5d6a9"))
-	draw_string(font, Vector2(415, 283), "孩子记录的旧壁龛", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("e5d6a9"))
+	draw_string(font, Vector2(414, 159), "测绘描图 · 拖动 / 点左下按钮旋转" if GameState.touch_mode_active else "测绘描图 · 左键拖放 / 右键或滚轮旋转", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color("e5d6a9"))
+	draw_string(font, Vector2(414, 284), "孩童涂鸦 · 记录石像封壁位置", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color("e5d6a9"))
+	if not fitted:
+		for pair in [[ROT_LEFT_BTN, "< 左转 15°"], [ROT_RIGHT_BTN, "右转 15° >"]]:
+			var r: Rect2 = pair[0]
+			var txt: String = pair[1]
+			draw_rect(r, Color(0.08, 0.14, 0.11, 0.94))
+			draw_rect(r, Color("c9ad6a"), false, 1.1)
+			draw_string(font, r.position + Vector2(6, 15), txt, HORIZONTAL_ALIGNMENT_LEFT, int(r.size.x) - 10, 10, Color("f4e6bd"))
 	for at in EVIDENCE:
-		draw_arc(at, 7.0, 0.0, TAU, 20, Color("ddc578"), 1.0)
+		draw_arc(at, 8.0 + pulse * 2.5, 0.0, TAU, 24, Color(0.92, 0.80, 0.48, 0.45 + pulse * 0.45), 1.4, true)
+		draw_circle(at, 2.2, Color("f4df9b"))
 	if dragging or fitted or PHOTO_RECT.has_point(sheet_center):
 		_draw_tracing()
 	if fitted:
 		for point in BAY_POINTS:
-			draw_rect(Rect2(point - Vector2(22, 17), Vector2(44, 34)), Color("e2cb89"), false, 1.0)
-	draw_string(font, Vector2(14, 316), status, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("e9e2c9"))
+			draw_rect(Rect2(point - Vector2(22, 17), Vector2(44, 34)), Color(0.95, 0.80, 0.48, 0.55 + pulse * 0.4), false, 1.5)
+	draw_rect(Rect2(12, 294, 594, 34), Color(0.05, 0.08, 0.07, 0.88))
+	draw_rect(Rect2(12, 294, 594, 34), Color("626e5c"), false, 1.0)
+	draw_string(font, Vector2(20, 316), status, HORIZONTAL_ALIGNMENT_LEFT, 580, 12, Color("efe7cf"))
 
 func _draw_tracing() -> void:
 	draw_set_transform(sheet_center, drawn_angle)

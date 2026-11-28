@@ -28,23 +28,50 @@ def copy_runtime(project: Path) -> None:
         if path.suffix in (".gd", ".json", ".tscn", ".tres", ".gdshader")
     )
     evidence_art = {f"crypt_{kind}_013" for kind in ("photo", "plan", "doodle")}
+    dynamic_audio = {
+        "click", "scrape", "step",
+        "step_sand_0", "step_sand_1",
+        "step_water_0", "step_water_1",
+        "step_metal_0", "step_metal_1",
+        "step_wood_0", "step_wood_1",
+        "step_stone_0", "step_stone_1", "step_stone_2", "step_stone_3",
+    }
+    webp_dirs = {"tilesets", "props", "map_landmarks", "portraits", "evidence"}
     for source in (ROOT / "assets").rglob("*"):
         if not source.is_file() or source.suffix in (".import", ".md"):
             continue
         relative = source.relative_to(ROOT)
         if source.suffix == ".png" and source.stem not in references and source.stem not in evidence_art:
             continue
+        if "audio" in relative.parts and source.suffix in (".wav", ".ogg"):
+            if source.name not in references and source.stem not in references and source.stem not in dynamic_audio:
+                continue
         target = project / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
         import_settings = source.with_suffix(source.suffix + ".import")
         if import_settings.is_file():
-            shutil.copy2(import_settings, target.with_suffix(target.suffix + ".import"))
+            dst_import = target.with_suffix(target.suffix + ".import")
+            if (
+                source.suffix == ".png"
+                and source.stat().st_size >= 350 * 1024
+                and not webp_dirs.isdisjoint(relative.parts)
+                and "characters" not in relative.parts
+            ):
+                txt = import_settings.read_text(encoding="utf-8")
+                txt = txt.replace("compress/mode=0", "compress/mode=1")
+                lines = [
+                    "compress/lossy_quality=0.88" if line.startswith("compress/lossy_quality=") else line
+                    for line in txt.splitlines()
+                ]
+                dst_import.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            else:
+                shutil.copy2(import_settings, dst_import)
 
 
 def write_export_preset(project: Path) -> None:
     settings = (ROOT / "project.godot").read_text(encoding="utf-8-sig")
-    settings = settings.replace('"AomenParanormalRecords"', '"AomenParanormalRecordsV5Playtest"')
+    settings = settings.replace('"AomenParanormalRecords"', '"AomenParanormalRecordsV6Playtest"')
     (project / "project.godot").write_text(settings, encoding="utf-8")
     preset = f'''[preset.0]
 name="Windows x64 Playtest"
@@ -96,6 +123,8 @@ def main() -> None:
     for variable in ("APPDATA", "LOCALAPPDATA", "TEMP", "TMP"):
         environment[variable] = str(temporary)
     exe = payload / EXE_NAME
+    licenses_dir = payload / "licenses"
+    licenses_dir.mkdir(exist_ok=True)
     with (build / "build.log").open("w", encoding="utf-8") as log:
         run_logged([*command, "--import"], log, environment)
         run_logged([*command, "--export-release", "Windows x64 Playtest", str(exe)], log, environment)
@@ -113,40 +142,52 @@ func _initialize() -> void:
             encoding="utf-8",
         )
         run_logged(
-            [*command, "--script", str(license_script), "--", str(payload / "Godot_Licenses.txt")],
+            [*command, "--script", str(license_script), "--", str(licenses_dir / "Godot_Licenses.txt")],
             log,
             environment,
         )
 
-    (payload / "试玩须知.txt").write_text(
-        "澳诡实录 · V5 Windows x64 试玩版\n\n"
-        "解压后双击 AomenParanormalRecords.exe。第一次启动会建立本试玩版独立存档。\n"
-        "WASD 移动，鼠标观察，E 调查，Shift 奔跑，Ctrl 蹲行，F 手电，B 背包，M 地图，J 手札，Esc 暂停。\n"
-        "部分谜题可按 H 逐条查看调查提示。\n"
-        "Q / Tab 查看手机，R 强闪；每章两次，每次消耗 25% 手机电量。缺电仍能查看离线资料。\n"
-        "手机声强表显示本处最近响动，也可开启返回现场后的临时声强提示。\n"
-        "安全准备点接电不会恢复已经用掉的强闪次数；追逐均保留不用强闪的脱身方式。\n"
-        "巴士异象按铃后走后门；无异象从前门下车。\n"
-        "防空洞竖井可在东岸拉桶绳诱敌，或绕入右下侧廊关门；白线外可观察，竖井内侧会坠落。\n"
-        "这是可试玩构建，未经过完整真人通关和音频听感验收。\n",
+    build_report = (build / "build.log").read_text(encoding="utf-8", errors="replace")
+    if "SCRIPT ERROR:" in build_report or "Parse Error:" in build_report:
+        raise RuntimeError(f"Godot reported script errors during export; see {build / 'build.log'}")
+
+    (payload / "给朋友的游玩说明.txt").write_text(
+        "《澳诡实录》V6 轻量试玩版 — 给朋友的游玩说明\n\n"
+        "1. 解压本压缩包后，直接双击 AomenParanormalRecords.exe 即可开始游玩（建议佩戴耳机体验纯正港澳粤语配音与惊悚音效）。\n"
+        "2. 首次启动会自动建立独立试玩存档，无需任何额外配置。\n"
+        "3. 基本操作：\n"
+        "   - WASD 移动 / Shift 奔跑 / Ctrl 蹲行 / 鼠标 转向观察 / E 调查交互\n"
+        "   - F 开关手电 / B 背包 / M 澳门路线图 / Esc 暂停\n"
+        "   - Q / Tab 打开手机（内含照片、声强表与「澳门见闻成就图鉴」），R 强闪驱鬼（每章 2 次，每次耗电 25%，缺电也能翻阅资料）\n"
+        "   - 卡关或想看推理方向可按 H 键查看调查提示\n"
+        "4. 重点关卡小贴士：\n"
+        "   - 33 路末班车：出现异象先拉车铃再走后门；一切正常则从前门下车，连续 5 次正确即可到达。\n"
+        "   - 防空洞竖井：可在东岸拉桶绳引怪，或绕右下侧廊关门甩脱；远离竖井白线内侧以免坠落。\n"
+        "   - 终章救援：敲出两短一长暗号后，合上高压电弧主闸用声呐引怪电击破门，切勿轻信左侧渗血暗门幻象。\n",
         encoding="utf-8-sig",
     )
     for folder in ("demo", "recorded", "qubodup"):
         source = ROOT / "assets" / "audio" / folder / "SOURCE_LICENSE.md"
-        shutil.copy2(source, payload / f"音效来源许可_{folder}.md")
-    shutil.copy2(ROOT / "assets/audio/SOURCE_LICENSE.md", payload / "音效来源许可_根目录.md")
-    shutil.copy2(ROOT / "docs/audio_generation_122.md", payload / "音效替换生成说明_122.md")
+        shutil.copy2(source, licenses_dir / f"音效来源许可_{folder}.md")
+    shutil.copy2(ROOT / "assets/audio/SOURCE_LICENSE.md", licenses_dir / "音效来源许可_根目录.md")
+    shutil.copy2(ROOT / "docs/audio_generation_122.md", licenses_dir / "音效替换生成说明_122.md")
+    v6_credits = ROOT / "docs/overhaul_v6/audio_credits_v6.md"
+    if v6_credits.is_file():
+        shutil.copy2(v6_credits, licenses_dir / "音效与粤语配音来源许可_V6.md")
+    shutil.copy2(ROOT / "assets/fonts/SOURCE_LICENSE.md", licenses_dir / "中文字体许可_NotoSerifSC.md")
+    shutil.copy2(ROOT / "assets/fonts/OFL.txt", licenses_dir / "OFL.txt")
 
-    archive = ROOT / f"澳诡实录_V5_Windows试玩_{stamp}.zip"
-    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=5) as bundle:
-        for path in sorted(payload.iterdir()):
-            bundle.write(path, f"Aomen_Paranormal_Records_V5/{path.name}")
+    expected_prefix = "澳诡实录_V6试玩"
+    archive = ROOT / f"澳诡实录_V6_轻量试玩版_{stamp}.zip"
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as bundle:
+        for path in sorted(payload.rglob("*")):
+            if path.is_file():
+                bundle.write(path, f"{expected_prefix}/{path.relative_to(payload).as_posix()}")
     with zipfile.ZipFile(archive) as bundle:
         assert bundle.testzip() is None
         extraction = build / "independent_extraction"
         extraction.mkdir()
         extraction_root = extraction.resolve()
-        expected_prefix = "Aomen_Paranormal_Records_V5"
         for member in bundle.infolist():
             name = PurePosixPath(member.filename)
             if name.is_absolute() or ".." in name.parts or not name.parts or name.parts[0] != expected_prefix:

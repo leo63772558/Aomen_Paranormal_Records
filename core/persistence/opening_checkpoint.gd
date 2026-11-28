@@ -6,7 +6,9 @@ const DEMO_FLAGS := {
 	"intro_job_done": false, "intro_invited": false, "intro_photo_seen": false,
 	"intro_plan_seen": false, "intro_boarded": false, "phone_taught": false,
 	"wet_tag_left": false, "pit_stone_thrown": false, "pit_bones_seen": false,
-	"bunker_chain_relieved": false, "ammo_chase_cleared": false, "demo_case_closed": false
+	"bunker_chain_relieved": false, "ammo_chase_cleared": false, "demo_case_closed": false,
+	"bunker_recording_verified": false, "tart_granny_met": false, "tea_uncle_met": false,
+	"street_ahhao_met": false, "foyer_intro_seen": false
 }
 
 const FLAGS := {"photo_taken":false,"pastry_shared":false,"knock_agreed":false,"entered_foyer":false,"meter_cover_open":false,"floor3_power":false,"jiamin_phone_found":false,"old_photo_seen":false,"room_bed_moved":false,"room_cover_open":false,"room_phone_answered":false,"wardrobe_tutorial_done":false,"shadow_passed":false,"maintenance_unlocked":false,"yard_escaped":false,"help_attempted":false}
@@ -92,9 +94,18 @@ static func decode(text: String, scope: Dictionary) -> Dictionary:
 	if typeof(bus.next_cycle_pending) != TYPE_BOOL: return {}
 	for numeric in ["successes", "cycle"]:
 		if typeof(bus.get(numeric)) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(bus[numeric])) or bus[numeric] != int(bus[numeric]) or bus[numeric] < 0: return {}
-	if bus.successes > 5 or bus.cycle > 100000: return {}
-	if bus.get("anomaly") not in ["", "driver_mirror", "blood_coinbox", "stop_screen", "mannequin_turn", "window_hands"]: return {}
+	if bus.successes > 8 or bus.cycle > 100000: return {}
+	if bus.get("anomaly") not in GameRules.BUS_ANOMALIES and bus.get("anomaly") not in ["", "aisle_blood_seep", "ceiling_shadow", "empty_seat_shoes", "fog_runner", "hanging_straps", "rear_door_peeker", "window_fog_writing", "driver_neck_twist", "aisle_wet_footprints"]: return {}
 	if typeof(bus.get("bell_pulled")) != TYPE_BOOL or typeof(bus.get("initialized")) != TYPE_BOOL: return {}
+	if not bus.has("seen_anomalies"):
+		bus.seen_anomalies = [bus.anomaly] if bus.anomaly in GameRules.BUS_ANOMALIES else []
+	if not bus.seen_anomalies is Array or bus.seen_anomalies.size() > GameRules.BUS_ANOMALIES.size():
+		return {}
+	var seen := {}
+	for anomaly in bus.seen_anomalies:
+		if anomaly not in GameRules.BUS_ANOMALIES or seen.has(anomaly):
+			return {}
+		seen[anomaly] = true
 	if typeof(data.get("schema_version")) not in [TYPE_INT, TYPE_FLOAT]:
 		return {}
 	if data.schema_version != 1 and data.schema_version != SCHEMA_VERSION:
@@ -152,7 +163,7 @@ static func decode(text: String, scope: Dictionary) -> Dictionary:
 		return {}
 	if data.flags.bus_voice_cleared and not data.flags.bus_reflection_cleared:
 		return {}
-	if data.flags.bus_arrived and not data.flags.bus_voice_cleared and bus.successes != 5:
+	if data.flags.bus_arrived and not data.flags.bus_voice_cleared and bus.successes != 8 and bus.successes != 5:
 		return {}
 	for flag in BEACH_FLAGS:
 		if not data.flags.has(flag): data.flags[flag] = false
@@ -175,7 +186,7 @@ static func decode(text: String, scope: Dictionary) -> Dictionary:
 	if data.flags.ah_hao_escaped and not data.flags.ah_hao_breaker_done: return {}
 	if data.flags.ah_hao_dead and not data.flags.ah_hao_escaped: return {}
 	if data.flags.dawen_304_escape_done and not data.flags.ah_hao_dead: return {}
-	if data.room_id.begins_with("ch5_") and not (data.flags.bus_arrived and bus.successes == 5): return {}
+	if data.room_id.begins_with("ch5_") and not (data.flags.bus_arrived and (bus.successes == 8 or bus.successes == 5)): return {}
 	if data.flags.beach_footprints_solved and not (data.flags.beach_sole_seen and data.flags.beach_trace_a_seen and data.flags.beach_wrack_seen and data.flags.beach_trace_b_seen): return {}
 	if data.flags.beach_cabinet_key_found and not data.flags.beach_key_box_open: return {}
 	if data.flags.beach_cabinet_open and not data.flags.beach_cabinet_key_found: return {}
@@ -350,6 +361,14 @@ static func decode(text: String, scope: Dictionary) -> Dictionary:
 		return {}
 	if not data.get("photo_file","") is String:
 		return {}
+	if data.has("macau_guide"):
+		if not data.macau_guide is Array:
+			return {}
+		for cid in data.macau_guide:
+			if not cid is String or not MacauGuide.CARDS.has(cid):
+				return {}
+	else:
+		data.macau_guide = []
 	if data.flags.photo_taken:
 		var regex:=RegEx.new()
 		regex.compile("^photo_[0-9_]+[.]png$")

@@ -10,7 +10,7 @@ const CABINET := preload("res://assets/props/meter_cabinet_009.png")
 var connected: Dictionary = {}
 var dragging: String = ""
 var pointer := Vector2.ZERO
-var feedback := "根据维修记录推断线路；拖动接线，右键左侧线头可拔下。"
+var feedback := "根据维修记录推断线路；拖动接线，点已接的左侧线头可拔下。"
 var focus_suspended := false
 var focus_previous_mode := Node.PROCESS_MODE_INHERIT
 
@@ -46,7 +46,14 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			for i in range(3):
-				if event.position.distance_to(port(true, i)) < 34 and not connected.has(LEFT[i]):
+				if event.position.distance_to(port(true, i)) < 34:
+					if connected.has(LEFT[i]):
+						connected.erase(LEFT[i])
+						feedback = "已拔下线路，可以重新接线。"
+						AudioManager.play_world_effect("power_switch")
+						queue_redraw()
+						accept_event()
+						return
 					dragging = LEFT[i]
 					pointer = event.position
 					break

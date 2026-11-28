@@ -80,7 +80,7 @@ func run() -> void:
 		player.phone_defense.prepare_chapter()
 		await frames(3)
 		check(GameState.phone_flash_charges == 2 and "保存失败" in hud.defense_notice.text, "chapter supply succeeds and save failure is reported after success feedback")
-		player.position = Vector2(280, 329)
+		player.position = Vector2(180, 174)
 		GameState.phone_battery = 10.0
 		check(GameState.recharge_preparation(), "socket still recharges after save failure")
 		await frames(3)
@@ -103,7 +103,7 @@ func run() -> void:
 	player.position = Vector2(318.38, 279.25)
 	player.look_dir = player.position.direction_to(Vector2(320, 300))
 	check(not player.phone_defense._socket_selected(), "nearby preparation socket cannot steal an E aimed at the room exit")
-	player.position = Vector2(280, 329)
+	player.position = Vector2(180, 174)
 	player.look_dir = Vector2.UP
 	check(player.phone_defense._socket_selected(), "standing directly in front of the visible socket selects recharging")
 	player.position = Vector2(300, 240)
@@ -197,6 +197,7 @@ func run() -> void:
 	)
 	await tap("pause")
 	check(not get_tree().paused and not hud.panel_open and fired == event_count, "closing the modal consumes its input without a world flash")
+	player.position = Vector2(180, 174)
 	GameState.phone_flash_charges = 0
 	check(GameState.recharge_preparation() and GameState.phone_battery == 100 and GameState.phone_flash_charges == 0, "safe recharging restores battery but never used opportunities")
 	player.phone_defense.prepare_chapter()
@@ -250,8 +251,11 @@ func _verify_enemy_types() -> void:
 	for enemy in [priest, red, ghost]:
 		check(enemy.flash_receiver.is_stunned() and enemy.velocity == Vector2.ZERO, "actual enemy receives flash without capture: " + enemy.get_script().resource_path.get_file())
 	var positions := [priest.position, red.position, ghost.position]
-	await physics(60)
-	check(priest.position == positions[0] and red.position == positions[1] and ghost.position == positions[2], "all actual enemy types stay motionless during the stun")
+	await physics(30)
+	check(priest.position.x > positions[0].x and red.position.x > positions[1].x and ghost.position.x > positions[2].x, "all actual enemy types recoil away from the flash")
+	positions = [priest.position, red.position, ghost.position]
+	await physics(30)
+	check(priest.position == positions[0] and red.position == positions[1] and ghost.position == positions[2], "all actual enemy types stop after the initial recoil and stay stunned")
 	for enemy in [priest, red, ghost]: enemy.active = false
 
 func _verify_codec() -> void:

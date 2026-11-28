@@ -108,6 +108,8 @@ func run() -> void:
 		await frames(4)
 		check(scene.selected_id == "schematic", "dialogue-close fixture is in range of a real world hotspot")
 		scene._say("回归夹具", "关闭这句话后，不应同时调查墙图。")
+		await frames(4)
+		check(scene.hud.modal.size.y <= 176.0 and scene.hud.modal.get_global_rect().encloses(scene.hud.panel_body.get_global_rect()), "short dialogue shrinks after closing the full-height inventory")
 		await tap("interact")
 		check(not scene.hud.panel_open and not GameState.opening_flags.coastal_pressure_diagram_seen, "E closing dialogue does not pass through to the world hotspot")
 		await verify_valve_action(scene)

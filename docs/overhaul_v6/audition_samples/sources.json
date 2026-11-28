@@ -1,0 +1,389 @@
+[
+  {
+    "category": "01_menu_bgm",
+    "file": "01_menu_bgm/Rafael_Krux_Creepy_Ambient.mp3",
+    "title": "主界面低沉悬疑氛围（Rafael Krux）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/c/c9/Rafael_Krux_-_Lights_-_Creepy_Ambient_Suspense_%28cc-by%29_%28filmmusic%29.mp3?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "license": "CC BY 4.0",
+    "author": "Rafael Krux (404)",
+    "size_bytes": 5268497
+  },
+  {
+    "category": "01_menu_bgm",
+    "file": "01_menu_bgm/Shadowlands_4_Breath.mp3",
+    "title": "呼吸感阴冷暗调 BGM（Kevin MacLeod）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/8/81/Shadowlands_4_-_Breath_%28ISRC_USUAN1700037%29.mp3?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "license": "CC BY 3.0",
+    "author": "Kevin MacLeod",
+    "size_bytes": 7364164
+  },
+  {
+    "category": "01_menu_bgm",
+    "file": "01_menu_bgm/Unseen_Horrors.mp3",
+    "title": "未知恐惧氛围 BGM（Kevin MacLeod）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/e/e7/Unseen_Horrors_%28ISRC_USUAN1400043%29.mp3?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "license": "CC BY 3.0",
+    "author": "Kevin MacLeod",
+    "size_bytes": 8036245
+  },
+  {
+    "category": "01_menu_bgm",
+    "file": "01_menu_bgm/Daniel_Simion_Creepy_Bg.ogg",
+    "title": "废弃老宅诡异环境音（Daniel Simion）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/0/05/Daniel_Simion_-_Creepy_Background_Sound.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "license": "CC BY 3.0",
+    "author": "Daniel Simion",
+    "size_bytes": 1423103
+  },
+  {
+    "category": "01_menu_bgm",
+    "file": "01_menu_bgm/Visager_Eerie_Mausoleum.ogg",
+    "title": "阴森墓室压抑底噪（Visager）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/b/b3/Visager_-_11_-_Eerie_Mausoleum.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "license": "CC BY 4.0",
+    "author": "Visager",
+    "size_bytes": 2279532
+  },
+  {
+    "category": "02_menu_foley",
+    "file": "02_menu_foley/Footstep_Concrete.ogg",
+    "title": "硬地脚步声（Concrete Steps）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/b/bf/Concrete_Steps_2.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "license": "CC BY-SA 3.0",
+    "author": "Pwaivers",
+    "size_bytes": 18252
+  },
+  {
+    "category": "02_menu_foley",
+    "file": "02_menu_foley/Footstep_Gravel.mp3",
+    "title": "碎石/暗道脚步声（Gravity Sound）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/f/f7/Footstep_on_Gravel_%28Gravity_Sound%29.mp3?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "license": "CC BY 4.0",
+    "author": "Gravity Sound",
+    "size_bytes": 12142
+  },
+  {
+    "category": "02_menu_foley",
+    "file": "02_menu_foley/Footstep_Stairs.ogg",
+    "title": "楼梯回响脚步声（螺旋石阶）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/0/0a/Pasos_en_escalera_de_caracol.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "license": "CC BY-SA 4.0",
+    "author": "Hippocampuz",
+    "size_bytes": 257768
+  },
+  {
+    "category": "02_menu_foley",
+    "file": "02_menu_foley/Door_Knock_Wood.ogg",
+    "title": "木门轻轻敲击声（Knocking on wood）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/1/1c/Knocking_on_wood_or_door.ogg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "license": "Public domain",
+    "author": "stephan",
+    "size_bytes": 155680
+  },
+  {
+    "category": "02_menu_foley",
+    "file": "02_menu_foley/Door_Knock_Short.wav",
+    "title": "清脆敲两下门声（Knock-knock）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/7/77/Knock-knock-si.wav?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "license": "CC0",
+    "author": "S&amp;I",
+    "size_bytes": 203276
+  },
+  {
+    "category": "07_female_scream",
+    "file": "07_female_scream/Demonic_Woman_Scream.mp3",
+    "title": "撕裂感女性惊声尖叫（Freesound CC0）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/e/e6/Nick121087_-_Demonic_Woman_Scream_%28cc0%29_%28freesound%29.mp3?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "license": "CC0",
+    "author": "nick121087",
+    "size_bytes": 159360
+  },
+  {
+    "category": "08_ghost_jumpscare",
+    "file": "08_ghost_jumpscare/Creepy_Footsteps_Growl.wav",
+    "title": "诡异脚步+尖叫+低吼",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/a/aa/Creepy_footsteps_and_screaming_and_growl.wav?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+    "license": "CC BY-SA 4.0",
+    "author": "Edisonisthebest",
+    "size_bytes": 1646616
+  },
+  {
+    "category": "01_menu_bgm",
+    "file": "01_menu_bgm/IA_Scary_Background.ogg",
+    "title": "恐怖环境长音（Internet Archive）",
+    "source_url": "https://archive.org/download/ScaryBackgroundSoundEffect/Scary%20Background%20Sound%20Effect.ogg",
+    "license": "Public Domain / Archive.org",
+    "author": "ScaryBackgroundSoundEffect",
+    "size_bytes": 125403
+  },
+  {
+    "category": "06_cantonese_opera",
+    "file": "06_cantonese_opera/Opera_GSC521A_ButterflyDream.mp3",
+    "title": "真实粤剧老唱片《蝴蝶梦》第一段（78转公版珍藏）",
+    "source_url": "https://archive.org/download/gsc-521-a.-0/GSC%20521%20A.0.mp3",
+    "license": "Public Domain / Archive.org",
+    "author": "任劍輝 Yam Kim-fai (Rèn Jiànhuī) 芳艶芬 Fong Yim-Fen (Fāng Yànfēn)",
+    "size_bytes": 2995592
+  },
+  {
+    "category": "06_cantonese_opera",
+    "file": "06_cantonese_opera/Opera_GSC522A_BloodBegonia.mp3",
+    "title": "真实粤剧老唱片《血染海棠红》选段（78转公版珍藏）",
+    "source_url": "https://archive.org/download/g.-s.-c.-522-a.-0/G.S.C.%20522%20A.0.mp3",
+    "license": "Public Domain / Archive.org",
+    "author": "任劍輝 Yam Kim-fai (Rèn Jiànhuī) 白雪仙 Bak Sheut-sin (Bái Xuěxiān)",
+    "size_bytes": 3209957
+  },
+  {
+    "category": "06_cantonese_opera",
+    "file": "06_cantonese_opera/Opera_Cantonese_Duet2.mp3",
+    "title": "真实广东大戏/粤曲老唱片选段 B（Victor 78转公版）",
+    "source_url": "https://archive.org/download/CantoneseSongs/cantonese2.mp3",
+    "license": "Public Domain / Archive.org",
+    "author": "undeterminable",
+    "size_bytes": 3593728
+  },
+  {
+    "category": "07_female_scream",
+    "file": "07_female_scream/IA_Women_Screaming.mp3",
+    "title": "真实女性惊恐尖叫声（Internet Archive）",
+    "source_url": "https://archive.org/download/screams_202511/women-screaming.mp3",
+    "license": "Public Domain / Archive.org",
+    "author": "screams_202511",
+    "size_bytes": 73709
+  },
+  {
+    "category": "07_female_scream",
+    "file": "07_female_scream/IA_Women_Cry.mp3",
+    "title": "女性绝望哭喊声（可用于电话/录音对比）",
+    "source_url": "https://archive.org/download/screams_202511/women-cry.mp3",
+    "license": "Public Domain / Archive.org",
+    "author": "screams_202511",
+    "size_bytes": 87188
+  },
+  {
+    "category": "08_ghost_jumpscare",
+    "file": "08_ghost_jumpscare/IA_Ghost_Moany.mp3",
+    "title": "阴森幽灵哀嚎鬼叫（Internet Archive）",
+    "source_url": "https://archive.org/download/screams_202511/ghost-voice-halloween-moany-ghost.mp3",
+    "license": "Public Domain / Archive.org",
+    "author": "screams_202511",
+    "size_bytes": 179035
+  },
+  {
+    "category": "08_ghost_jumpscare",
+    "file": "08_ghost_jumpscare/IA_Ghost_1.mp3",
+    "title": "突袭鬼叫声效（Internet Archive）",
+    "source_url": "https://archive.org/download/screams_202511/ghost-1.mp3",
+    "license": "Public Domain / Archive.org",
+    "author": "screams_202511",
+    "size_bytes": 166496
+  },
+  {
+    "category": "08_ghost_jumpscare",
+    "file": "08_ghost_jumpscare/IA_Zombie_Ghost.ogg",
+    "title": "低沉怪物嘶吼扑脸声（Internet Archive）",
+    "source_url": "https://archive.org/download/ZombieAndGhost/Zombie%20and%20Ghost.ogg",
+    "license": "Public Domain / Archive.org",
+    "author": "ZombieAndGhost",
+    "size_bytes": 30428
+  },
+  {
+    "category": "09_cantonese_voice_ref",
+    "file": "09_cantonese_voice_ref/Voice_Dawen_WanLung.mp3",
+    "title": "陈大文 · 候选粤语男声（HK 沉稳青年 WanLung）",
+    "source_url": "Microsoft Edge Neural TTS (zh-HK-WanLungNeural)",
+    "license": "TTS 试听样本（若正式选用需确认商用授权，也可改由团队真人粤语录制替换）",
+    "author": "zh-HK-WanLungNeural",
+    "size_bytes": 56448
+  },
+  {
+    "category": "09_cantonese_voice_ref",
+    "file": "09_cantonese_voice_ref/Voice_AhHao_WanLung_Young.mp3",
+    "title": "黄梓豪 · 候选粤语少年音（WanLung 青年偏高音调）",
+    "source_url": "Microsoft Edge Neural TTS (zh-HK-WanLungNeural)",
+    "license": "TTS 试听样本（若正式选用需确认商用授权，也可改由团队真人粤语录制替换）",
+    "author": "zh-HK-WanLungNeural",
+    "size_bytes": 52992
+  },
+  {
+    "category": "09_cantonese_voice_ref",
+    "file": "09_cantonese_voice_ref/Voice_Jiamin_HiuMaan.mp3",
+    "title": "黄嘉敏 · 候选粤语女声 A（HK 清晰女声 HiuMaan）",
+    "source_url": "Microsoft Edge Neural TTS (zh-HK-HiuMaanNeural)",
+    "license": "TTS 试听样本（若正式选用需确认商用授权，也可改由团队真人粤语录制替换）",
+    "author": "zh-HK-HiuMaanNeural",
+    "size_bytes": 73296
+  },
+  {
+    "category": "09_cantonese_voice_ref",
+    "file": "09_cantonese_voice_ref/Voice_Jiamin_HiuGaai.mp3",
+    "title": "黄嘉敏 · 候选粤语女声 B（HK 偏柔惊恐 HiuGaai）",
+    "source_url": "Microsoft Edge Neural TTS (zh-HK-HiuGaaiNeural)",
+    "license": "TTS 试听样本（若正式选用需确认商用授权，也可改由团队真人粤语录制替换）",
+    "author": "zh-HK-HiuGaaiNeural",
+    "size_bytes": 68112
+  },
+  {
+    "category": "03_stalker_chase",
+    "file": "03_stalker_chase/Classic_Horror_1.mp3",
+    "title": "经典紧迫追逐弦乐（Classic Horror 1）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/d/df/Classic_Horror_1_%28ISRC_USUAN1100471%29.mp3",
+    "license": "CC BY 3.0",
+    "author": "Kevin MacLeod",
+    "size_bytes": 3736043
+  },
+  {
+    "category": "03_stalker_chase",
+    "file": "03_stalker_chase/The_Escalation.mp3",
+    "title": "心跳升级压迫追逐（The Escalation）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/8/81/The_Escalation_%28ISRC_USUAN1400041%29.mp3",
+    "license": "CC BY 3.0",
+    "author": "Kevin MacLeod",
+    "size_bytes": 10477113
+  },
+  {
+    "category": "03_stalker_chase",
+    "file": "03_stalker_chase/Horror_Suspense_Krux.ogg",
+    "title": "长发鬼急促逼近弦乐（Rafael Krux）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/0/03/Rafael_Krux_-_Horror_Suspense.ogg",
+    "license": "CC0",
+    "author": "Rafael Krux",
+    "size_bytes": 3341380
+  },
+  {
+    "category": "03_stalker_chase",
+    "file": "03_stalker_chase/Intense_Suspense.mp3",
+    "title": "高度紧张逃亡节奏（Audionautix）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/9/9a/Audionautix-com-ccby-intensesuspense.mp3",
+    "license": "CC BY 3.0",
+    "author": "Created by Jason Shaw. Released under Creative Commons Attribution License 3.0. ",
+    "size_bytes": 3716746
+  },
+  {
+    "category": "04_bunker_family_chase",
+    "file": "04_bunker_family_chase/Day_of_Chaos.mp3",
+    "title": "防空洞失控混乱追逐（Day of Chaos）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/3/3a/Day_of_Chaos_%28ISRC_USUAN1300040%29.mp3",
+    "license": "CC BY 3.0",
+    "author": "Kevin MacLeod",
+    "size_bytes": 9989342
+  },
+  {
+    "category": "04_bunker_family_chase",
+    "file": "04_bunker_family_chase/Controlled_Chaos.mp3",
+    "title": "密闭通道压迫追逐（Controlled Chaos）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/1/16/Controlled_Chaos_%28ISRC_USUAN1200059%29.mp3",
+    "license": "CC BY 3.0",
+    "author": "Kevin MacLeod",
+    "size_bytes": 14092660
+  },
+  {
+    "category": "04_bunker_family_chase",
+    "file": "04_bunker_family_chase/Putrid_Heartbeat.ogg",
+    "title": "沉重腐败心跳压迫音（Putrid Heartbeat）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/a/a3/Putrid_Heartbeat.ogg",
+    "license": "CC BY-SA 4.0",
+    "author": "Bilberryerer",
+    "size_bytes": 58797
+  },
+  {
+    "category": "04_bunker_family_chase",
+    "file": "04_bunker_family_chase/Ghost_Dance.oga",
+    "title": "诡异鬼影逼近节奏（Ghost Dance）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/8/84/Ghost_Dance_%28MacLeod%2C_Kevin%29_%28ISRC_USUAN1100573%29.oga",
+    "license": "CC BY 3.0 us",
+    "author": "Kevin MacLeod\n1821 S Ridge Rd\nGreen Bay WI, 54304\nUSA",
+    "size_bytes": 3531275
+  },
+  {
+    "category": "05_butcher_chase",
+    "file": "05_butcher_chase/Classic_Horror_2.mp3",
+    "title": "肉铺凶残追杀弦乐（Classic Horror 2）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/7/7d/Classic_Horror_2_%28ISRC_USUAN1100470%29.mp3",
+    "license": "CC BY 3.0",
+    "author": "Kevin MacLeod",
+    "size_bytes": 3105127
+  },
+  {
+    "category": "05_butcher_chase",
+    "file": "05_butcher_chase/Night_Break.mp3",
+    "title": "暗夜破门狂追节奏（Night Break）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/d/d4/Night_Break_%28ISRC_USUAN1100380%29.mp3",
+    "license": "CC BY 3.0",
+    "author": "Kevin MacLeod",
+    "size_bytes": 5397057
+  },
+  {
+    "category": "05_butcher_chase",
+    "file": "05_butcher_chase/The_Voices.oga",
+    "title": "疯狂低语与压迫追逐（The Voices）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/4/4a/The_Voices_%28MacLeod%2C_Kevin%29_%28ISRC_USUAN1100046%29.oga",
+    "license": "CC BY 3.0 us",
+    "author": "Kevin MacLeod\n1821 S Ridge Rd\nGreen Bay WI, 54304\nUSA",
+    "size_bytes": 12408271
+  },
+  {
+    "category": "05_butcher_chase",
+    "file": "05_butcher_chase/Welcome_to_HorrorLand.mp3",
+    "title": "阴森狂暴追逐曲（Welcome to HorrorLand）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/8/8c/Welcome_to_HorrorLand_%28ISRC_USUAN1500070%29.mp3",
+    "license": "CC BY 3.0",
+    "author": "Kevin MacLeod",
+    "size_bytes": 8004511
+  },
+  {
+    "category": "07_female_scream",
+    "file": "07_female_scream/Piercing_Shriek.ogg",
+    "title": "刺耳高音尖叫（Piercing shriek）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/2/2e/Piercing_shriek.ogg",
+    "license": "Public domain",
+    "author": "stephan",
+    "size_bytes": 86825
+  },
+  {
+    "category": "07_female_scream",
+    "file": "07_female_scream/Scream_Short.wav",
+    "title": "短促突发惊叫（Scream-c）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/d/dc/Scream-c.wav",
+    "license": "CC BY-SA 4.0",
+    "author": "Raspberry Pi Foundation, Andy Oakley",
+    "size_bytes": 62664
+  },
+  {
+    "category": "08_ghost_jumpscare",
+    "file": "08_ghost_jumpscare/Horror_Swell.wav",
+    "title": "贴脸惊吓骤响冲击（Horror swell）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/4/4e/Horror_swell.wav",
+    "license": "CC BY-SA 4.0",
+    "author": "Iirogueking",
+    "size_bytes": 4901772
+  },
+  {
+    "category": "08_ghost_jumpscare",
+    "file": "08_ghost_jumpscare/ERH_Ghostly_Voices.mp3",
+    "title": "阴魂低语幽灵声（Freesound CC-BY）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/7/79/ERH_-_ghostly_voices_%28cc-by%29_%28freesound%29.mp3",
+    "license": "CC BY 3.0",
+    "author": "ERH",
+    "size_bytes": 2342660
+  },
+  {
+    "category": "08_ghost_jumpscare",
+    "file": "08_ghost_jumpscare/Horror_Laugh.ogg",
+    "title": "阴森鬼笑声（Horror laugh）",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Horror_laugh.ogg",
+    "license": "CC BY 3.0",
+    "author": "klankbeeld",
+    "size_bytes": 136053
+  },
+  {
+    "category": "09_cantonese_voice_ref",
+    "file": "09_cantonese_voice_ref/Ref_Cantonese_Macau_Human.ogg",
+    "title": "真人粤语发音参考：「澳门」标准粤语读音",
+    "source_url": "https://upload.wikimedia.org/wikipedia/commons/b/b3/Chinese%28Cantonese%29-Macau_full_name.ogg",
+    "license": "CC-BY / Wikimedia Commons",
+    "author": "Wikimedia Commons",
+    "size_bytes": 44371
+  }
+]

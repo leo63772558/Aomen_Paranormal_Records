@@ -302,7 +302,7 @@ func evidence_text(id: String) -> String:
 		"display": return "屏幕显示黑沙。扬声器里传来熟悉的敲击和哭声。重放手机旧附件后，两段电流断口与敲击间隔完全重合。\n\n这不是此刻有人回答大文；先核对窗外站牌和车门位置。" if stage == 2 else ("屏幕显示黑沙；广播报黑沙海滩，没有夹入旧采访的哭声。" if stage == 3 else "屏幕显示目的地黑沙。车仍在开；目的地不等于已经到站。")
 		"sign": return "站牌写着黑沙海滩。路沿停止移动，前门正对站台。" if stage == 3 else "窗外仍是同一块 W-17 旧站牌，门缝正对的也不是下车站台。屏幕报黑沙不能代替核对窗外。"
 		"door": return "前门对齐黑沙站台，但还没有开。确认人数、倒影、站牌和广播后，先按停车铃，再走到前门。" if stage == 3 else "门缝外的站牌仍是 W-17。司机没有停车开门；熟悉的声音不是现在能下车的证据。"
-		"notebook": return "嘉敏手札边注：‘倒影独坐，离开末排。’\n\n旧采访附件记录在失踪之前。要判断现在是否到站，核对站牌、车门位置和广播，不能仅凭熟悉的声音。\n\n前部有一只独立扶手，站在它下面等车身稳下来。"
+		"notebook": return "嘉敏笔记边注：‘倒影独坐，离开末排。’\n\n旧采访附件记录在失踪之前。要判断现在是否到站，核对站牌、车门位置和广播，不能仅凭熟悉的声音。\n\n前部有一只独立扶手，站在它下面等车身稳下来。"
 	return ""
 
 func resolve_judgment(action: String) -> void:
@@ -312,7 +312,7 @@ func resolve_judgment(action: String) -> void:
 		_on_hud_close()
 	if not _evidence_ready():
 		premature_bell_warned = true
-		_say("司机隔着玻璃", "“还没到站，看清楚再按。”\n\n还缺现场核对。先观察座位、倒影、报站和站牌，必要时翻手札。")
+		_say("司机隔着玻璃", "“还没到站，看清楚再按。”\n\n还缺现场核对。先观察座位、倒影、报站和站牌，必要时翻背包线索。")
 		return
 	if (stage == 0 or stage == 2) and action == "continue":
 		_advance_stage()
@@ -423,7 +423,7 @@ func _on_hud_close() -> void:
 	if is_transitioning or in_cinematic:
 		player.controls_enabled = false
 
-func _on_hud_pause() -> void:
+func _on_hud_pause(_message := "") -> void:
 	player.controls_enabled = false
 	player.clear_motion()
 	hud.open_panel("暂停", "车厢、倒影与等待计时均已暂停。", [
@@ -442,10 +442,10 @@ func _return_story_title() -> void:
 func _update_hud_status() -> void:
 	if not is_instance_valid(hud):
 		return
-	var objectives := ["核对车厢与玻璃中的同一名乘客，再决定是否继续观察。", "查清空座与倒影的矛盾，翻手札，再决定站在哪里。", "核对旧语音、窗外站牌与前门位置，决定是否继续。", "核对人数、倒影、广播和站牌，再按铃走向前门。"]
+	var objectives := ["核对车厢与玻璃中的同一名乘客，再决定是否继续观察。", "查清空座与倒影的矛盾，翻看线索，再决定站在哪里。", "核对旧语音、窗外站牌与前门位置，决定是否继续。", "核对人数、倒影、广播和站牌，再按铃走向前门。"]
 	hud.objective.text = objectives[stage]
 	var checked := 0
 	for id in REQUIRED[stage]:
 		if observed.has(id): checked += 1
-	hud.state_text.text = "现场核对 %d/%d     [ J / Q ] 手札" % [checked, REQUIRED[stage].size()]
+	hud.state_text.text = "现场核对 %d/%d     [ B / Q ] 线索" % [checked, REQUIRED[stage].size()]
 

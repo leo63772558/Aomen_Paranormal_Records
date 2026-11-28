@@ -83,7 +83,7 @@ func run() -> void:
 	GameState.opening_flags.ch6_circuit_isolated = true
 	GameState.opening_flags.ch6_entity_lured = true
 	GameState.opening_flags.ch6_entity_bound = true
-	scene.player.position = Vector2(1112, 335)
+	scene.player.position = Vector2(1112, 415)
 	scene.player.controls_enabled = true
 	Input.action_press("move_right")
 	await frames(35)
@@ -96,7 +96,7 @@ func run() -> void:
 	Input.action_release("move_right")
 	scene.player.clear_motion()
 	check(scene.player.position.x < scene.rescue_hatch.LEAF_RECT.position.x, "the lower visible door leaf also blocks passage instead of leaving a gap below its old collision")
-	scene.player.position = Vector2(1112, 335)
+	scene.player.position = Vector2(1112, 415)
 	scene._open_rescue_door()
 	await frames(20)
 	check(scene.scene_action_active and scene.rescue_hatch.progress > 0.0 and scene.rescue_hatch.progress < 1.0, "rusted door leaf swings before rescue begins")

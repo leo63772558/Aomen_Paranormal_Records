@@ -84,7 +84,7 @@ func _ready() -> void:
 		var tint := Color("251b13") if rescue else Color("eff0df")
 		_label(starts[row], Vector2(63 if rescue else 48, y), 16, tint)
 		_label(ends[row], Vector2(414, y), 16, tint)
-	_label("找到同样的记号。换个节奏敲，数它回了几下。" if rescue else "沿粉笔箭头穿过小拱门。", Vector2(24, 278), 15)
+	_label("下管（///）直通右侧防爆隔离舱；嘉敏已敲出两短一长，快去配电柜合高压闸引怪电击！" if rescue else "沿干燥检修拱道穿过小拱门。", Vector2(24, 278), 14 if rescue else 15)
 	_label("Esc 返回", Vector2(518, 278), 14)
 
 func _label(value: String, at: Vector2, font_size: int, tint := Color("eff0df")) -> void:
@@ -102,16 +102,23 @@ func _label(value: String, at: Vector2, font_size: int, tint := Color("eff0df"))
 func _draw() -> void:
 	if layout_id == "rescue":
 		return
-	draw_rect(Rect2(24, 57, 570, 199), Color("242b26"))
-	draw_rect(Rect2(24, 57, 570, 199), Color("80735b"), false, 1.5)
+	var plate_rect := Rect2(24, 57, 570, 199)
+	var tunnel_tex: Texture2D = preload("res://assets/tilesets/coastal_works_silt_tunnel_059.png")
+	draw_texture_rect(tunnel_tex, plate_rect, false, Color(0.28, 0.34, 0.30, 0.92))
+	draw_rect(plate_rect, Color(0.05, 0.09, 0.08, 0.62), true)
+	draw_rect(plate_rect, Color("8c7d5d"), false, 2.0)
+	for corner in [Vector2(33, 66), Vector2(585, 66), Vector2(33, 247), Vector2(585, 247)]:
+		draw_circle(corner, 3.0, Color("7f6e4f"))
+		draw_circle(corner, 1.4, Color("c4b184"))
 	for row in range(3):
 		var y := 89.0 + row * 61.0
 		var marked := row == 1
-		var ink := Color("d7bb7e") if marked else Color("74756a")
+		var ink := Color("dfc488") if marked else Color("7c7f72")
+		draw_line(Vector2(147, y), Vector2(387, y), Color(0.04, 0.06, 0.05, 0.78), 8.0, true)
 		draw_line(Vector2(147, y), Vector2(387, y), ink, 4.0, true)
 		draw_circle(Vector2(147, y), 6.0, ink)
 		draw_circle(Vector2(387, y), 6.0, ink)
 		if marked:
 			for dash in range(3):
 				var x := 253.0 + dash * 12.0
-				draw_line(Vector2(x, y + 10), Vector2(x + 6, y - 11), Color("eee2c6"), 2.0, true)
+				draw_line(Vector2(x, y + 10), Vector2(x + 6, y - 11), Color("f1e5c8"), 2.2, true)

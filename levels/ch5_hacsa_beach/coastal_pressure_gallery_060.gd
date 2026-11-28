@@ -5,13 +5,13 @@ const WORLD_SIZE := Vector2(1280, 720)
 const GAUGE_VISUAL_POS := Vector2(1008, 105)
 const BLEED_VISUAL_POS := Vector2(1030, 168)
 const TARGETS := {
-	"schematic": Vector2(394, 268),
-	"gauge": Vector2(1008, 256),
-	"drain": Vector2(1206, 500),
-	"inlet": Vector2(315, 268),
-	"bypass": Vector2(968, 256),
-	"bleed": Vector2(1045, 256),
-	"cabinet": Vector2(88, 440),
+	"schematic": Vector2(394, 352),
+	"gauge": Vector2(1008, 338),
+	"drain": Vector2(1142, 500),
+	"inlet": Vector2(315, 352),
+	"bypass": Vector2(968, 338),
+	"bleed": Vector2(1045, 338),
+	"cabinet": Vector2(156, 440),
 	"exit": Vector2(640, 145),
 	"return": Vector2(640, 662)
 }
@@ -54,6 +54,7 @@ var cabinet_visual: Node2D
 var cabinet_door: Polygon2D
 var cabinet_paper: Polygon2D
 var scene_action_active := false
+var leaving := false
 var valve_motion: Tween
 var arch_water: Polygon2D
 var drain_water: Polygon2D
@@ -68,7 +69,7 @@ func _ready() -> void:
 	if not GameState.opening_flags.coastal_silt_route_verified:
 		push_error("The pressure gallery requires the verified silt-tunnel route.")
 		return
-	AudioManager.set_scene_ambience("crypt")
+	AudioManager.set_scene_ambience("coastal")
 	_build_background()
 	_build_geometry()
 	_build_mechanical_indicators()
@@ -103,6 +104,7 @@ func _ready() -> void:
 	_fade_in()
 	if not GameState.opening_flags.coastal_pressure_intro_seen:
 		GameState.opening_flags.coastal_pressure_intro_seen = true
+		GameState.unlock_macau_guide("coastal_pressure_room", false)
 		checkpoint()
 		hud.notify("水压锁住了检修柜。靠近墙图或任一手轮，按 E 打开调压台。")
 
@@ -201,79 +203,27 @@ func _water_surface(shader: Shader, points: PackedVector2Array) -> Polygon2D:
 
 
 func _make_wheel_indicator(node_name: String, at: Vector2) -> Node2D:
+	# Clean logical pivot without ugly programmer-art white circles over the painted valves
 	var wheel := Node2D.new()
 	wheel.name = node_name
 	wheel.position = at
 	wheel.z_index = 5
-
-	var rim := Line2D.new()
-	rim.name = "Rim"
-	rim.width = 2.4
-	rim.default_color = Color("a89a7a", 0.95)
-	var pts := PackedVector2Array()
-	var segs := 16
-	var radius := 16.0
-	for i in range(segs + 1):
-		var angle := i * TAU / segs
-		pts.append(Vector2(cos(angle), sin(angle)) * radius)
-	rim.points = pts
-	wheel.add_child(rim)
-
-	var spoke1 := Line2D.new()
-	spoke1.name = "Spoke1"
-	spoke1.points = PackedVector2Array([Vector2(-radius, 0), Vector2(radius, 0)])
-	spoke1.width = 2.6
-	spoke1.default_color = Color("d4c6a6", 0.95)
-	wheel.add_child(spoke1)
-
-	var spoke2 := Line2D.new()
-	spoke2.name = "Spoke2"
-	spoke2.points = PackedVector2Array([Vector2(0, -radius), Vector2(0, radius)])
-	spoke2.width = 2.6
-	spoke2.default_color = Color("d4c6a6", 0.95)
-	wheel.add_child(spoke2)
-
-	var hub := Polygon2D.new()
-	hub.name = "Hub"
-	var hub_pts := PackedVector2Array()
-	for i in range(8):
-		var angle := i * TAU / 8
-		hub_pts.append(Vector2(cos(angle), sin(angle)) * 3.5)
-	hub.polygon = hub_pts
-	hub.color = Color("e0d2b2")
-	wheel.add_child(hub)
-
 	add_child(wheel)
 	return wheel
 
 
 func _build_cabinet_visual() -> void:
+	# Clean logical container with subtle warm glint when unlocked (no floating gray rectangles)
 	cabinet_visual = Node2D.new()
 	cabinet_visual.name = "OpenedCabinetVisual"
 	cabinet_visual.position = TARGETS.cabinet
 	cabinet_visual.z_index = 3
-
-	var panel := Polygon2D.new()
-	panel.polygon = PackedVector2Array([
-		Vector2(-18, -26), Vector2(18, -26),
-		Vector2(18, 26), Vector2(-18, 26)
-	])
-	panel.color = Color("1e2220", 0.88)
-	cabinet_visual.add_child(panel)
-
 	cabinet_paper = Polygon2D.new()
-	cabinet_paper.polygon = PackedVector2Array([
-		Vector2(-10, -16), Vector2(12, -16),
-		Vector2(12, 16), Vector2(-10, 16)
-	])
-	cabinet_paper.color = Color("d4c8a8", 0.92)
+	cabinet_paper.visible = false
 	cabinet_visual.add_child(cabinet_paper)
-
 	cabinet_door = Polygon2D.new()
-	cabinet_door.name = "Door"
-	cabinet_door.color = Color("38403b", 0.95)
+	cabinet_door.visible = false
 	cabinet_visual.add_child(cabinet_door)
-
 	var opened: bool = GameState.opening_flags.coastal_works_record_found
 	_update_cabinet_visual_state(opened)
 	add_child(cabinet_visual)
@@ -283,30 +233,12 @@ func _update_cabinet_visual_state(opened: bool) -> void:
 	if not is_instance_valid(cabinet_door) or not is_instance_valid(cabinet_paper):
 		return
 	cabinet_paper.visible = opened
-	if opened:
-		cabinet_door.polygon = PackedVector2Array([
-			Vector2(-18, -26), Vector2(-32, -22),
-			Vector2(-32, 30), Vector2(-18, 26)
-		])
-	else:
-		cabinet_door.polygon = PackedVector2Array([
-			Vector2(-18, -26), Vector2(18, -26),
-			Vector2(18, 26), Vector2(-18, 26)
-		])
 
 
 func _build_route_mark() -> void:
 	verified_route_mark = Line2D.new()
 	verified_route_mark.name = "VerifiedPressureRoute"
-	verified_route_mark.points = PackedVector2Array([
-		Vector2(640, 656), Vector2(640, 570), Vector2(640, 482),
-		Vector2(640, 390), Vector2(640, 305), Vector2(640, 222)
-	])
-	verified_route_mark.width = 2.2
-	verified_route_mark.default_color = Color("c5b995", 0.58)
-	verified_route_mark.antialiased = true
-	verified_route_mark.z_index = -3
-	verified_route_mark.visible = GameState.opening_flags.coastal_pressure_route_verified
+	verified_route_mark.visible = false
 	add_child(verified_route_mark)
 
 
@@ -361,7 +293,9 @@ func _process(delta: float) -> void:
 	elif selected_id == "cabinet" and GameState.opening_flags.coastal_pressure_bleeder_open:
 		prompt_name = "打开检修柜并读取记录"
 	elif selected_id == "exit" and GameState.opening_flags.coastal_pressure_route_verified:
-		prompt_name = "进入旧娱乐场地基"
+		prompt_name = "进入百利新邨旧地基"
+	if selected_id == "return" and not GameState.uses_legacy_coastal_rooms():
+		prompt_name = "退回沿海闸室"
 	hud.prompt.text = "[ E ] " + prompt_name if not selected_id.is_empty() else ""
 	_update_objective()
 
@@ -386,7 +320,7 @@ func interact_target(id: String) -> void:
 	if id == "return":
 		await _return_to_silt_tunnel()
 	elif id == "exit":
-		_attempt_forward_route()
+		await _attempt_forward_route()
 	elif EVIDENCE_FLAGS.has(id):
 		_inspect_evidence(id)
 	elif VALVE_FLAGS.has(id):
@@ -491,23 +425,46 @@ func _open_maintenance_record() -> void:
 
 
 func _attempt_forward_route() -> void:
+	if leaving:
+		return
 	if not GameState.opening_flags.coastal_pressure_bleeder_open:
 		hud.show_resource_feedback("拱道还在回水。先让压力归零。")
 		return
 	if not GameState.opening_flags.coastal_works_record_found:
 		hud.show_resource_feedback("左侧检修柜里有路线，先取出来。")
 		return
+	leaving = true
+	scene_action_active = true
+	player.controls_enabled = false
+	player.clear_motion()
 	GameState.opening_flags.coastal_pressure_route_verified = true
 	verified_route_mark.visible = true
 	checkpoint()
+	var card := ChapterLandmarkTransition.play(
+		self,
+		"最终章 · 石屎筹局",
+		"离开黑沙沿海泄压暗渠 → 沿废弃排水管廊潜入百利新邨夹层",
+		"暗渠尽头通往路氹旧楼「百利新邨」被连夜封死的渗血石屎夹层……",
+		"稍早之前 · 夹层另一侧……",
+		"gate_iron",
+		"res://assets/ui/map_landmarks/stop_8_bleeding_wall.png"
+	)
+	await card.completed
+	if not is_inside_tree():
+		return
 	if GameState.request_room_change("ch6_abandoned_vip", "from_pressure_gallery"):
 		GameState.save_transition_checkpoint()
 	else:
+		if is_instance_valid(card):
+			card.dismiss()
+		leaving = false
+		scene_action_active = false
+		player.controls_enabled = true
 		hud.show_resource_feedback("入口暂时无法打开，请再试一次。")
 
 
 func _open_record() -> void:
-	_say("手札 · 调压廊", _journal_text())
+	_say("现场线索 · 调压廊", _journal_text())
 
 func _journal_text() -> String:
 	var lines: Array[String] = ["沿海工事 · 调压廊记录", ""]
@@ -533,7 +490,7 @@ func _update_objective() -> void:
 	control_marker.visible = not flags.coastal_pressure_bleeder_open
 	hud.state_text.text = "调压廊"
 	if flags.coastal_works_record_found:
-		hud.objective.text = "走到上方拱门，按 E 进入旧娱乐场地基。"
+		hud.objective.text = "走到上方拱门，按 E 进入百利新邨渗血石屎地基。"
 		hud.set_investigation_hints(player, PackedStringArray())
 	elif flags.coastal_pressure_bleeder_open:
 		hud.objective.text = "到左边检修柜，按 E 取出路线。"
@@ -612,12 +569,6 @@ func _return_to_title() -> void:
 	get_tree().change_scene_to_file("res://ui/main_menu.tscn")
 
 
-func _use_three_room_coastal() -> bool:
-	for tag in ["057", "058", "059", "060", "225", "works", "silt", "press"]:
-		if tag in GameState.run_id:
-			return false
-	return true
-
 
 func _return_to_silt_tunnel() -> void:
 	if scene_action_active:
@@ -637,8 +588,9 @@ func _return_to_silt_tunnel() -> void:
 	tween.tween_property(fade, "color:a", 1.0, 0.55)
 	await tween.finished
 	if not is_inside_tree(): return
-	var dest_room := "ch5_coastal_chamber" if _use_three_room_coastal() else "ch5_coastal_silt_tunnel"
-	var dest_entry := "from_silt_tunnel" if _use_three_room_coastal() else "from_pressure_gallery"
+	var legacy_route := GameState.uses_legacy_coastal_rooms()
+	var dest_room := "ch5_coastal_silt_tunnel" if legacy_route else "ch5_coastal_chamber"
+	var dest_entry := "from_pressure_gallery" if legacy_route else "from_silt_tunnel"
 	if GameState.request_room_change(dest_room, dest_entry):
 		GameState.save_transition_checkpoint()
 	else:
@@ -646,7 +598,7 @@ func _return_to_silt_tunnel() -> void:
 		scene_action_active = false
 		if is_instance_valid(player):
 			player.controls_enabled = true
-		_say("暂时无法返回", "淤泥岔口入口没有通过登记核验。大文仍留在调压廊，没有被送到未登记的地点。")
+		_say("南侧拱道暂时无法通行", "还在调压廊。稍后可以在拱道旁再按 E 试一次。")
 
 
 func _fade_in() -> void:

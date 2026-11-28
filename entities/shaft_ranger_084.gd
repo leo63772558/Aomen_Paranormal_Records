@@ -6,7 +6,7 @@ signal fell
 
 enum State { IDLE, PATROL, INVESTIGATE, CHASE, STUNNED, SEARCH, RETURN }
 const NAV := preload("res://levels/ch2_guia/bunker_ammo_layout.gd")
-const WALK := preload("res://assets/characters/shadow_walk_011.png")
+const WALK := preload("res://assets/characters/wardrobe_stalker_v5.png")
 var target: PlayerController
 var active := false
 var state := State.IDLE
@@ -44,15 +44,20 @@ func _ready() -> void:
 	figure.name = "Figure"
 	var frames := SpriteFrames.new()
 	frames.add_animation("walk")
-	frames.set_animation_speed("walk", 8.0)
-	for index in range(6):
-		var frame := AtlasTexture.new()
-		frame.atlas = WALK
-		frame.region = Rect2(index * 362, 0, 362, 724)
-		frames.add_frame("walk", frame)
+	frames.set_animation_speed("walk", 6.2)
+	var cw := WALK.get_width() * 0.5
+	var ch := WALK.get_height() * 0.5
+	for row in range(2):
+		for col in range(2):
+			var frame := AtlasTexture.new()
+			frame.atlas = WALK
+			frame.region = Rect2(col * cw, row * ch, cw, ch)
+			frame.filter_clip = true
+			frames.add_frame("walk", frame)
 	figure.sprite_frames = frames
-	figure.position = Vector2(0, -42)
-	figure.scale = Vector2.ONE * (84.0 / 724.0)
+	figure.position = Vector2(0, -46)
+	figure.scale = Vector2.ONE * (92.0 / ch)
+	figure.modulate = Color(0.74, 0.78, 0.80, 0.96)
 	add_child(figure)
 	flash_receiver = PhoneFlashReceiver.new()
 	flash_receiver.sense_offset = Vector2(0, -48)

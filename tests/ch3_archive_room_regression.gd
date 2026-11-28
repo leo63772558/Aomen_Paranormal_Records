@@ -151,7 +151,7 @@ func _run() -> void:
 	player.look_dir = (Vector2(367, 92) - player.position).normalized()
 	room.call("_process", 1.0 / 60.0)
 	_check(room.get("selected_id") == "photo", "站在柜台前可面向并选中照片，不需穿过家具")
-	_check(hud.prompt.text.contains("四人旧合照"), "实际交互提示对应照片对象")
+	_check(hud.prompt.text.contains("旧合照"), "实际交互提示对应照片对象")
 
 	# A locked rule page before solving the resident record discrepancy cannot set progress.
 	room.call("interact_target", "balance_rule")
@@ -168,6 +168,11 @@ func _run() -> void:
 		_check(GameState.opening_flags[evidence_flags[target]], target + " 留下调查记录")
 		room.call("close_dialog")
 		await _settle(2)
+		if target == "resident_register":
+			_check(GameState.has_demo_item("jiamin_severed_finger"), "检查血盆发现并收起嘉敏带尾戒断指")
+			if hud.panel_open:
+				room.call("close_dialog")
+				await _settle(2)
 	_check(not GameState.opening_flags.ch3_guest_inferred and hud.choice_buttons.size() == 3, "四份证据后显示竖排推理选项")
 	if hud.choice_buttons.size() >= 3:
 		var choices_clear := true
@@ -247,6 +252,7 @@ func _run() -> void:
 	room.call("close_dialog")
 	room.call("interact_target", "cold_door")
 	_check(room.work_in_progress and not player.controls_enabled, "door opening locks player before animation completes")
+	_check(AudioManager.last_world_effect == "gate_iron", "maintenance_door_uses_iron_gate_sound")
 	room.notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
 	var frozen_alpha: float = room.cold_door_overlay.modulate.a
 	await _settle(12)
@@ -261,7 +267,6 @@ func _run() -> void:
 	_check(not (room.get("opened_leaf_collision") as CollisionShape2D).disabled and (room.get("opened_leaf_occluder") as LightOccluder2D).visible, "swung_iron_leaf_retains_collision_and_shadow")
 	_check(player.test_move(Transform2D(0.0, Vector2(565, 100)), Vector2(35, 0)), "painted_swung_leaf_blocks_player")
 	_check(player.test_move(Transform2D(0.0, Vector2(550, 98)), Vector2(0, -75)), "the wall above the rear doorway blocks travel onto the lintel")
-	_check(AudioManager.last_world_effect == "gate_iron", "maintenance_door_uses_iron_gate_sound")
 	room.call("close_dialog")
 	player.look_dir = (Vector2(426, 117) - player.position).normalized()
 	room.call("_process", 1.0 / 60.0)

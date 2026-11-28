@@ -19,7 +19,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var title := Label.new()
-	title.text = {"seat":"后排座位", "glass":"侧窗 · 对照实景", "mirror":"驾驶座后视镜", "display":"报站与手机旧附件", "sign":"窗外站牌", "door":"前门与站台", "notebook":"嘉敏手札 · 失踪前的记录"}.get(evidence_id, "现场调查")
+	title.text = {"seat":"后排座位", "glass":"侧窗 · 对照实景", "mirror":"驾驶座后视镜", "display":"报站与手机旧附件", "sign":"窗外站牌", "door":"前门与站台", "notebook":"嘉敏笔记 · 失踪前的记录"}.get(evidence_id, "现场调查")
 	title.position = Vector2(20, 12)
 	title.add_theme_font_size_override("font_size", 18)
 	add_child(title)
@@ -52,6 +52,7 @@ func _ready() -> void:
 		confirm.position = Vector2(329, 250)
 		confirm.size = Vector2(270, 27)
 		confirm.add_theme_font_size_override("font_size", 12)
+		_style_button(confirm, true)
 		confirm.pressed.connect(tape_comparison.confirm_match)
 		add_child(confirm)
 		comparison_status = caption
@@ -59,6 +60,7 @@ func _ready() -> void:
 	exit.text = "收起观察   [ Esc ]"
 	exit.position = Vector2(20, 285)
 	exit.size = Vector2(200, 30)
+	_style_button(exit, false)
 	exit.pressed.connect(func(): close_requested.emit())
 	add_child(exit)
 	if bus.stage in [0, 2]:
@@ -66,8 +68,26 @@ func _ready() -> void:
 		proceed.text = "继续观察车程"
 		proceed.position = Vector2(330, 285)
 		proceed.size = Vector2(265, 30)
+		_style_button(proceed, true)
 		proceed.pressed.connect(func(): decision_requested.emit("continue"))
 		add_child(proceed)
+
+func _style_button(btn: Button, accent := false) -> void:
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.add_theme_color_override("font_color", Color("f2e4b6") if accent else Color("e0e5d4"))
+	btn.add_theme_color_override("font_hover_color", Color("fff4cf"))
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color(0.15, 0.24, 0.19, 0.90) if accent else Color(0.08, 0.15, 0.12, 0.88)
+	normal.border_color = Color("bfa872") if accent else Color("6f7a64")
+	normal.set_border_width_all(1)
+	normal.set_corner_radius_all(3)
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = Color("244c3c")
+	hover.border_color = Color("e8d391")
+	btn.add_theme_stylebox_override("normal", normal)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", hover)
 
 func _build_preview(viewport: Control) -> void:
 	var photo := TextureRect.new()

@@ -34,6 +34,9 @@ func _ready() -> void:
 	screaming_face = _sprite(1)
 	screaming_face.modulate.a = 0.0
 	head.add_child(screaming_face)
+	# Enable painted grabbing hands plunging in from both sides as the passenger's jaw snaps open!
+	left_arm.visible = true
+	right_arm.visible = true
 	left_arm.add_child(_sprite(2))
 	right_arm.add_child(_sprite(3))
 	var tear_layer := Control.new()
@@ -83,7 +86,8 @@ func _ready() -> void:
 	sound.volume_db = -6
 	sound.stream = preload("res://assets/audio/demo/capture_rush_026.wav")
 	add_child(sound)
-	sound.play()
+	if not AudioManager.silent_run:
+		sound.play()
 
 func _bone(bone_name: String, at: Vector2) -> Bone2D:
 	var bone := Bone2D.new()

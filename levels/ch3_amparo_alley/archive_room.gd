@@ -12,20 +12,22 @@ const TARGET_POINTS := {
 	"cold_door": Vector2(548, 145),
 	"balance": Vector2(420, 91),
 	"archive_key": Vector2(386, 117),
-	"w17_ticket": Vector2(426, 117)
-	,"lens_cap": Vector2(513, 166)
+	"w17_ticket": Vector2(426, 117),
+	"lens_cap": Vector2(513, 166)
 }
+const OPERA_RADIO_POINT := Vector2(182, 134)
 const TARGET_NAMES := {
-	"photo":"查看四人旧合照",
-	"resident_register":"查阅常住登记册",
+	"photo":"查看屠夫与学徒旧合照",
+	"resident_register":"检查断手叉烧包血盆",
 	"balance_rule":"翻阅秤账背页",
-	"delivery_letter":"查看送药旧信",
-	"visitor_log":"查阅访客签名页",
+	"delivery_letter":"查看邮差投诉旧信",
+	"visitor_log":"翻阅肉铺封存账单",
 	"cold_door":"检查冷柜后维护门",
 	"balance":"检查旧杆秤",
 	"archive_key":"检查方牌备用钥匙",
-	"w17_ticket":"查看 33 路时刻表"
-	,"lens_cap":"查看冷柜下的镜头盖"
+	"w17_ticket":"查看 33 路时刻表",
+	"lens_cap":"查看冷柜下的镜头盖",
+	"opera_radio":"调听桌角旧收音机（粤剧）"
 }
 
 var player: PlayerController
@@ -44,6 +46,8 @@ var cold_door_overlay: Sprite2D
 var opened_leaf_collision: CollisionShape2D
 var opened_leaf_occluder: LightOccluder2D
 var departing_to_bus := false
+var butcher_ref: CharacterBody2D
+var clue_glints: Dictionary = {}
 
 func _ready() -> void:
 	GameState.prepare_opening_resume()
@@ -53,7 +57,7 @@ func _setup_room() -> void:
 	if GameState.current_room_id != ROOM_ID:
 		push_error("第三章资料室由存档或正式路线进入；当前房间状态不匹配。")
 		return
-	AudioManager.set_scene_ambience("street")
+	AudioManager.set_scene_ambience("butcher_opera")
 	var background = preload("res://core/components/room_tile_layer.gd").new()
 	background.background_texture = preload("res://assets/tilesets/ch3_archive_room_030.png")
 	add_child(background)
@@ -80,8 +84,11 @@ func _setup_room() -> void:
 	update_objective()
 	if not GameState.opening_flags.ch3_intro_seen:
 		GameState.opening_flags.ch3_intro_seen = true
+		GameState.unlock_macau_guide("amparo_alley")
+		GameState.unlock_macau_guide("macau_cantonese_opera", false)
+		GameState.unlock_macau_guide("archive_ledger", false)
 		checkpoint()
-		show_text("大关斜巷 · 肉铺后间", "二战饥荒年代这里盛传「肥人慎入大关斜巷」，紧邻的长楼斜巷早年更是烧毁过猪仔馆铁笼。嘉敏刚在这间旧肉铺躲过，先按 E 检查右边冷柜后的铁门。")
+		show_text("大关斜巷 · 旧肉铺后间", "街坊说，闹饥荒的时候，天一黑就没人敢走这条巷。肉铺早关了，收音机怎么还在唱？\n先看看右边那扇铁门。嘉敏可能走过这儿。")
 
 func _build_room_geometry() -> void:
 	LevelGeometry.wall(self, Rect2(0, 0, 640, 14))
@@ -103,7 +110,8 @@ func _build_room_geometry() -> void:
 
 func _build_cold_door_geometry() -> void:
 	var door_rect := Rect2(508, 43, 89, 119)
-	LevelGeometry.wall(self, Rect2(508, 31, 112, 39))
+	# Seal the upper lintel above the open cold-room floor threshold (y < 72) so the player cannot walk onto the door header while still reaching the departure doorway (y=75..94).
+	LevelGeometry.wall(self, Rect2(508, 14, 118, 58))
 	LevelGeometry.wall(self, Rect2(498, 70, 19, 65))
 	cold_door_body = StaticBody2D.new()
 	cold_door_body.name = "ColdRoomDoorCollision"
@@ -161,6 +169,53 @@ func _build_evidence_photo() -> void:
 	photograph.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	photograph.z_index = 2
 	add_child(photograph)
+	var basin_prop_path := "res://assets/props/ch3_blood_basin_prop_v6.png" if ResourceLoader.exists("res://assets/props/ch3_blood_basin_prop_v6.png") else "res://assets/props/ch3_blood_basin_v6.png"
+	if ResourceLoader.exists(basin_prop_path):
+		var basin_tex := load(basin_prop_path) as Texture2D
+		if basin_tex != null:
+			var basin := Sprite2D.new()
+			basin.name = "BloodBasinVisual"
+			basin.texture = basin_tex
+			basin.position = TARGET_POINTS.resident_register
+			basin.scale = Vector2(28.0 / float(basin_tex.get_width()), 20.0 / float(basin_tex.get_height()))
+			basin.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+			basin.z_index = 2
+			add_child(basin)
+	# Visible painted vintage 1980s wooden AM radio sitting on the left crate playing real Cantonese Opera
+	var radio_pos := Vector2(158, 118)
+	if ResourceLoader.exists("res://assets/props/butcher_radio_v10.png"):
+		var radio_tex := load("res://assets/props/butcher_radio_v10.png") as Texture2D
+		if radio_tex != null:
+			var radio_sprite := Sprite2D.new()
+			radio_sprite.name = "VintageOperaRadio"
+			radio_sprite.texture = radio_tex
+			radio_sprite.position = radio_pos
+			radio_sprite.scale = Vector2(36.0 / float(radio_tex.get_width()), 26.0 / float(radio_tex.get_height()))
+			radio_sprite.z_index = 122
+			add_child(radio_sprite)
+	var radio_glow := PointLight2D.new()
+	radio_glow.name = "OperaRadioGlow"
+	radio_glow.position = radio_pos + Vector2(6, -2)
+	radio_glow.texture = preload("res://assets/lighting/soft_light.png")
+	radio_glow.texture_scale = 0.22
+	radio_glow.color = Color("f0a848")
+	radio_glow.energy = 0.55
+	add_child(radio_glow)
+	var rtw := create_tween().set_loops()
+	rtw.tween_property(radio_glow, "energy", 0.78, 0.9).set_trans(Tween.TRANS_SINE)
+	rtw.tween_property(radio_glow, "energy", 0.42, 0.9).set_trans(Tween.TRANS_SINE)
+	# Subtle warm amber document glints so closely spaced counter clues are visually unmistakable before inspection
+	var glint_tex := preload("res://assets/lighting/soft_light.png")
+	for cid in ["photo", "resident_register", "balance_rule", "delivery_letter", "visitor_log"]:
+		var g := Sprite2D.new()
+		g.name = "ClueGlint_%s" % cid
+		g.texture = glint_tex
+		g.position = TARGET_POINTS[cid] + Vector2(0, 6)
+		g.scale = Vector2.ONE * 0.045
+		g.modulate = Color(1.0, 0.86, 0.48, 0.55)
+		g.z_index = 140
+		add_child(g)
+		clue_glints[cid] = g
 
 func _build_cold_door_overlay() -> void:
 	var texture := AtlasTexture.new()
@@ -308,8 +363,23 @@ func _target_available(id: String) -> bool:
 	return true
 
 func _process(delta: float) -> void:
+	var tick_s := float(Time.get_ticks_msec()) * 0.001
 	if is_instance_valid(warm_lamp):
-		warm_lamp.energy = 0.32 + sin(float(Time.get_ticks_msec()) * 0.0031) * 0.025
+		warm_lamp.energy = 0.32 + sin(tick_s * 3.1) * 0.025
+	var glint_flags := {
+		"photo": "ch3_photo_seen",
+		"resident_register": "ch3_register_seen",
+		"balance_rule": "ch3_balance_rule_seen",
+		"delivery_letter": "ch3_delivery_seen",
+		"visitor_log": "ch3_visitor_log_seen"
+	}
+	for cid in clue_glints:
+		var g: Sprite2D = clue_glints[cid]
+		if is_instance_valid(g):
+			var seen: bool = bool(GameState.opening_flags.get(glint_flags[cid], false))
+			g.visible = not seen
+			if not seen:
+				g.modulate.a = 0.32 + 0.28 * (0.5 + 0.5 * sin(tick_s * 3.4 + float(cid.length())))
 	if not is_instance_valid(player) or not is_instance_valid(hud) or hud.panel_open or work_in_progress:
 		return
 	if not departing_to_bus and _can_depart_to_bus():
@@ -336,13 +406,17 @@ func _process(delta: float) -> void:
 			continue
 		selected_id = id
 		best_score = score
+	if selected_id.is_empty():
+		var rdelta := OPERA_RADIO_POINT - player.position
+		if rdelta.length() <= 92.0 and player.look_dir.dot(rdelta.normalized()) >= -0.1:
+			selected_id = "opera_radio"
 	if not selected_id.is_empty():
 		hud.prompt.text = "[ E ] " + _target_name(selected_id)
 		hud.prompt.position = Vector2(clampf(player.position.x - 70.0, 65.0, 445.0), clampf(player.position.y + 15.0, 145.0, 289.0))
 
 func _target_name(id: String) -> String:
 	if id == "cold_door" and GameState.opening_flags.ch3_cold_door_open:
-		return "进入冷柜后的暗道"
+		return "冲出冷库铁门" if GameState.opening_flags.ch3_ticket_found else "检查冷柜后的暗道"
 	if id == "balance" and GameState.opening_flags.ch3_ticket_found:
 		return "查看已打开的档案柜"
 	if id == "archive_key" and GameState.opening_flags.ch3_balance_solved:
@@ -368,7 +442,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_open_inventory()
 	elif event.is_action_pressed("map"):
 		get_viewport().set_input_as_handled()
-		show_text("两日攻略", "攻略页停在澳门旧街区。大关斜巷是竖井便签留下的下一处方向。")
+		show_text("澳门手绘路线图", "路线图停在澳门旧街区。大关斜巷是竖井便签留下的下一处方向。")
 
 func interact_target(id: String) -> void:
 	if id.is_empty():
@@ -385,22 +459,34 @@ func interact_target(id: String) -> void:
 			_open_timetable()
 		"photo":
 			_record_evidence("ch3_photo_seen")
-			show_text("四人合照", "照片里有四个人，最右边那人腰间挂着方形铜牌。", [], _maybe_prompt_inference)
+			show_text("肉铺三人旧合照 · 屠夫与两名学徒", "发黄的旧合照里只有三个人：站在案板中间、围裙沾满血渍的老屠夫，以及左右两名面无血色的年轻学徒——照片里根本没有邮差。\n\n老屠夫腰间赫然挂着一枚「方形铜牌」。右方冷库铁门锁孔正缺一把方铜牌钥匙。", [], _maybe_prompt_inference)
 		"resident_register":
 			_record_evidence("ch3_register_seen")
-			show_text("常住登记册", "常住册只记了三名住户。来访的人记在另一本簿子里。", [], _maybe_prompt_inference)
+			var basin_art := load("res://assets/props/ch3_blood_basin_v6.png") as Texture2D if ResourceLoader.exists("res://assets/props/ch3_blood_basin_v6.png") else null
+			show_text("血盆 · 叉烧包与邮差制服碎片", "铁盆里渗着令人作呕的浓重血腥味，几只泛油的叉烧包旁竟混着残破血指与撕碎的绿白色邮差制服布角……", [], func():
+				var taken_now := GameState.take_demo_item("jiamin_severed_finger")
+				var finger_art := load("res://assets/props/jiamin_severed_finger_v6.png") as Texture2D if ResourceLoader.exists("res://assets/props/jiamin_severed_finger_v6.png") else null
+				var desc := "血盆边缘还掉着一根惨白的断指——左手尾指戴着嘉敏那枚细银尾戒，指节旁还粘着出发前贴的米色创可贴！大文倒吸一口冷气，她曾在这里撞破屠夫惨案并拼死逃了出去。"
+				if taken_now:
+					desc += "\n\n【重要证物已收起】按 B 可在背包复查。"
+				show_text("嘉敏带尾戒的断指", desc, [], _maybe_prompt_inference, finger_art)
+			, basin_art)
 		"balance_rule":
+			_record_evidence("ch3_balance_rule_seen")
 			_inspect_balance_rule()
 		"delivery_letter":
 			_record_evidence("ch3_delivery_seen")
-			show_text("送药旧信", "送药的人只待了一会儿，从后门递药。信末有签名。", [], _maybe_prompt_inference)
+			show_text("邮差投诉旧信 · 半夜剁肉与粤剧", "一张沾了油血迹的邮政内部投诉单留在这里，落款写着大关斜巷邮差：\n「邻街肉铺掌柜每到半夜三更就在后间锁门狂剁骨头，还故意把留声机里的粤剧（《蝴蝶梦》）开到震天响掩盖声音，街坊半夜被吵得睡不着——今晚投递完我就去敲他后门理论！」\n\n这正是血盆里那名失踪邮差最后留下的字据。", [], _maybe_prompt_inference)
 		"visitor_log":
 			_record_evidence("ch3_visitor_log_seen")
-			show_text("访客簿", "访客簿上的签名和送药信一样。", [], _maybe_prompt_inference)
+			show_text("肉铺封存账单 · 秤柜线索", "账页夹着肉铺查封前的出货单与一条急促红笔批注：\n「店里只报过三名肉铺人员，人手短缺却日日多出大量不明来历的『叉烧大包』熟肉出货。掌柜把后门方铜牌备用钥锁进了十六两老杆秤下的暗柜！开柜口诀压在柜台『秤账背页』里。」\n\n【下一步】去翻看「秤账背页」，再操作柜台右侧的「旧杆秤」开柜取钥匙！", [], _maybe_prompt_inference)
 		"cold_door":
 			_use_cold_room_door()
 		"balance":
 			_open_balance_board()
+		"opera_radio":
+			AudioManager.play_world_effect("scare_radio_static")
+			show_text("旧晶体管收音机", "唱腔在一句没唱完的地方停住。大文把旋钮拨过半格，杂音里有人念了一遍店里的地址。\n\n手一松，旋钮自己滑了回去。唱词重新从那半句开始。")
 
 func _collect_archive_item(target_id: String, flag_id: String, item_id: String, effect_id: String) -> void:
 	if not _target_available(target_id) or not GameState.take_demo_item(item_id):
@@ -475,10 +561,10 @@ func _maybe_prompt_inference() -> void:
 		_show_inference()
 
 func _show_inference() -> void:
-	show_text("照片与记录", "照片四人，住户三名。送药信和访客簿的签名一样。第四人可能是谁？", [
-		{"text":"先列作临时送药访客，不认定为常住者", "callback":_accept_guest_hypothesis},
-		{"text":"认定是被漏掉的第四名常住者", "callback":_reject_guest_hypothesis.bind(1)},
-		{"text":"把两笔签名当成不同的人", "callback":_reject_guest_hypothesis.bind(2)}
+	show_text("案卷还原 · 血盆与粤剧", "合照仅有屠夫与两名学徒；血盆里是邮差制服碎片与嘉敏的断指，收音机整夜循环粤剧。这间肉铺当年发生了什么？", [
+		{"text":"屠夫半夜剁人做叉烧包并用粤剧掩盖，撞破的邮差已被灭口，嘉敏断指脱逃", "callback":_accept_guest_hypothesis},
+		{"text":"邮差是肉铺第四名学徒，两人合伙经营夜间茶楼", "callback":_reject_guest_hypothesis.bind(1)},
+		{"text":"血盆只是普通猪骨废料，粤剧和冷库门没有关联", "callback":_reject_guest_hypothesis.bind(2)}
 	])
 
 func _accept_guest_hypothesis() -> void:
@@ -486,12 +572,12 @@ func _accept_guest_hypothesis() -> void:
 	GameState.opening_flags.ch3_guest_inferred = true
 	checkpoint()
 	update_objective()
-	show_text("暂定判断", "第四人是来送药的访客。他戴着方铜牌。")
+	show_text("暂定判断", "旧合照只有屠夫与两名学徒。邮差投诉夜半剁肉与粤剧后下落不明；嘉敏也在这间肉铺遇袭断指后逃往亚马喇前地。")
 
 func _reject_guest_hypothesis(reason: int) -> void:
 	close_dialog(false)
-	var body := "常住册的登记范围并不等于当天到访名单。四个人同框不能单独证明四人都住在这里。" if reason == 1 else "信件落款和访客簿的起笔、回锋一致；目前没有证据说明是两个人。"
-	show_text("证据还不够", body + "\n\n再按记录范围判断一次。", [
+	var body := "合照上根本没有第四名学徒，血盆里撕碎的是绿白色邮差制服。" if reason == 1 else "嘉敏带银尾戒与创可贴的断指就在血盆旁，投诉信也明确指出了半夜剁骨与粤剧掩声。"
+	show_text("证据还不够", body + "\n\n再核对桌上的四份证物。", [
 		{"text":"重新核对材料", "callback":_show_inference}
 	])
 
@@ -501,7 +587,7 @@ func _inspect_cold_door() -> void:
 		checkpoint()
 		update_objective()
 	AudioManager.play_world_effect("lock_mechanism")
-	show_text("维护门锁孔", "门牌后留着一圈旧铜锈，方形牌槽的四角都有磨亮的擦痕。访客簿里的签名能把送药记录对上，但钥匙还锁在档案柜里。\n\n旧杆秤旁压着一页账册，翻开后才能确认开柜规则。")
+	show_text("维护门锁孔", "门牌后留着一圈旧铜锈，方形牌槽的四角都有磨亮的擦痕，与合照中老屠夫腰间的方铜牌一致。\n\n旧杆秤旁压着一页账册，翻开后才能确认开柜规则。")
 
 func _use_cold_room_door() -> void:
 	if not GameState.opening_flags.ch3_cold_door_seen:
@@ -510,20 +596,23 @@ func _use_cold_room_door() -> void:
 		update_objective()
 	if not GameState.opening_flags.ch3_key_found:
 		AudioManager.play_world_effect("lock_mechanism")
-		show_text("维护门锁孔", "铁门通往隔壁长楼斜巷旧址，要用方形铜牌钥匙打开。钥匙锁在柜台档案柜里，先翻开十六两旧杆秤旁的账页。")
+		show_text("维护门锁孔", "铁门通往隔壁大关斜巷旧街面，要用方形铜牌钥匙打开。钥匙锁在柜台杆秤下的暗柜里，先翻开十六两旧杆秤旁的账页。")
 		return
 	if not GameState.opening_flags.ch3_cold_door_open:
 		_open_cold_room_door()
 		return
 	if not GameState.opening_flags.ch3_ticket_found:
+		AudioManager.play_world_effect("metal_latch")
 		show_text("维护门后的暗道", "方牌钥匙已经打开维护门。后巷通向地面街道；时刻表还没收好，先回柜台拿上那张撕页。")
 		return
-	show_text("维护门后的暗道", "向前穿过门，走后巷去亚马喇前地。")
+	_depart_to_bus()
 
 func _open_cold_room_door() -> void:
 	GameState.opening_flags.ch3_cold_door_open = true
 	checkpoint()
 	work_in_progress = true
+	if is_instance_valid(butcher_ref):
+		butcher_ref.active = false
 	player.controls_enabled = false
 	player.clear_motion()
 	cold_door_collision.set_deferred("disabled", true)
@@ -540,18 +629,105 @@ func _open_cold_room_door() -> void:
 		return
 	work_in_progress = false
 	update_objective()
-	show_text("方牌钥匙转动", "铁门开了，门后隐约飘来长楼斜巷旧址的阴风。拿上柜台的 33 路时刻表，穿门走后巷。")
+	if not is_instance_valid(butcher_ref) and get_node_or_null("ButcherGhost") == null:
+		_spawn_butcher_ghost()
+	elif is_instance_valid(butcher_ref) and not departing_to_bus:
+		butcher_ref.active = true
+	var escape_hint := "按 E 直接冲出铁门！" if GameState.opening_flags.ch3_ticket_found else "先拿上柜台的 33 路时刻表，再从铁门按 E 逃出！"
+	show_text("铁门开了", "铁门后的冷风灌进屋里——" + escape_hint)
+
+func _spawn_butcher_ghost() -> void:
+	if is_instance_valid(butcher_ref) or get_node_or_null("ButcherGhost") != null:
+		return
+	var butcher = preload("res://entities/shadow_chaser.gd").new()
+	butcher.name = "ButcherGhost"
+	butcher.target = player
+	butcher.position = Vector2(118, 265)
+	butcher.speed = 68.0
+	add_child(butcher)
+	butcher_ref = butcher
+	# Swap in dedicated Macau Butcher Ghost sprite: top row = walk cycle, bottom row = cleaver attack lunge!
+	if ResourceLoader.exists("res://assets/characters/butcher_ghost_v6.png"):
+		var bsheet: Texture2D = load("res://assets/characters/butcher_ghost_v6.png")
+		var fig := butcher.get_node_or_null("Figure") as AnimatedSprite2D
+		var trail := butcher.get_node_or_null("ShadowAfterimage") as Sprite2D
+		if bsheet != null and fig != null:
+			var bframes := SpriteFrames.new()
+			bframes.add_animation("walk")
+			bframes.set_animation_speed("walk", 4.4)
+			bframes.add_animation("attack")
+			bframes.set_animation_speed("attack", 6.8)
+			var cw := bsheet.get_width() * 0.5
+			var ch := bsheet.get_height() * 0.5
+			for col in range(2):
+				var fw := AtlasTexture.new()
+				fw.atlas = bsheet
+				fw.region = Rect2(col * cw, 0.0, cw, ch)
+				fw.filter_clip = true
+				bframes.add_frame("walk", fw)
+				var fa := AtlasTexture.new()
+				fa.atlas = bsheet
+				fa.region = Rect2(col * cw, ch, cw, ch)
+				fa.filter_clip = true
+				bframes.add_frame("attack", fa)
+			fig.sprite_frames = bframes
+			fig.scale = Vector2.ONE * (110.0 / ch)
+			fig.position = Vector2(0, -54)
+			fig.play("walk")
+			butcher.attack_animation_range = 92.0
+			if trail != null:
+				trail.scale = fig.scale
+				trail.position = fig.position
+	GhostTaunt.attach(butcher, PackedStringArray(["大关斜巷的肉……还差一两……", "别跑……八仙炉火正旺……", "躲进冷库也逃不掉……"]), 4.4)
+	AudioManager.set_scene_ambience("")
+	AudioManager.start_chase_music("butcher")
+	butcher.active = false
+	get_tree().create_timer(1.1, false).timeout.connect(func():
+		if is_instance_valid(butcher) and not departing_to_bus and not work_in_progress:
+			GhostTaunt.materialize_from_shadow(self, butcher.position)
+			AudioManager.play_at(self, "scare_door_bang", butcher.position)
+			butcher.active = true
+	)
+	butcher.caught.connect(func():
+		AudioManager.stop_chase_music()
+		if is_instance_valid(butcher):
+			butcher.active = false
+		player.controls_enabled = false
+		player.clear_motion()
+		get_tree().paused = true
+		await DemoCaptureAnimation.play_on(self, DemoCaptureAnimation.BUTCHER_PATH)
+		if not is_inside_tree():
+			return
+		get_tree().paused = false
+		player.position = Vector2(320, 258)
+		player.controls_enabled = true
+		player.reset_physics_interpolation()
+		# Keep the butcher hunting until Dawen actually escapes through the cold-room exit!
+		if is_instance_valid(butcher):
+			butcher.position = Vector2(118, 265)
+			butcher.active = true
+			butcher.reset_physics_interpolation()
+		AudioManager.start_chase_music("butcher")
+		if GameState.opening_flags.ch3_ticket_found:
+			hud.notify("时刻表还在背包里。按住 Shift，穿过右上方的铁门。")
+		else:
+			hud.notify("按住 Shift 拉开距离，带上柜台的时刻表，再从铁门出去。")
+	)
 
 func _can_depart_to_bus() -> bool:
 	return GameState.opening_flags.ch3_cold_door_open and GameState.opening_flags.ch3_key_found and GameState.opening_flags.ch3_ticket_found and COLD_PASSAGE_ENTRY.has_point(player.position)
 
 func _depart_to_bus() -> void:
 	departing_to_bus = true
+	AudioManager.stop_chase_music()
+	if is_instance_valid(butcher_ref):
+		butcher_ref.active = false
 	player.controls_enabled = false
 	player.clear_motion()
-	show_text("肉铺后巷", "窄道尽头，街上暂时没有动静。", [], Callable(self, "_enter_quiet_passage"))
+	show_text("冲出冷库后巷", "沉重的冷库铁门在身后轰然合拢，终于甩开了拎着剁骨刀的肉铺怨灵！前方的老巷暂时没有动静。", [], Callable(self, "_enter_quiet_passage"))
 
 func _enter_quiet_passage() -> void:
+	AudioManager.stop_chase_music()
 	get_tree().paused = false
 	if not GameState.request_room_change("ch3_quiet_passage", "from_archive"):
 		departing_to_bus = false
@@ -595,7 +771,8 @@ func _on_balance_solved() -> void:
 	_refresh_archive_pickups()
 	_reveal_archive_pickups()
 	_close_balance_board(true)
-	hud.show_resource_feedback("柜锁退开了。钥匙和时刻表落在柜台边。")
+	_spawn_butcher_ghost()
+	hud.show_resource_feedback("柜锁弹开惊动了暗处的屠夫！抓起钥匙与时刻表，开门冲出去！")
 	update_objective()
 
 func _close_balance_board(completed := false) -> void:
@@ -614,12 +791,12 @@ func _close_balance_board(completed := false) -> void:
 		player.clear_motion()
 	update_objective()
 
-func show_text(title: String, body: String, choices: Array = [], after: Callable = Callable()) -> void:
+func show_text(title: String, body: String, choices: Array = [], after: Callable = Callable(), photo: Texture2D = null) -> void:
 	after_dialog = after
 	if is_instance_valid(player):
 		player.controls_enabled = false
 		player.clear_motion()
-	hud.open_panel(title, body, choices)
+	hud.open_panel(title, body, choices, photo != null, "陈大文", null, photo)
 	get_tree().paused = true
 
 func close_dialog(run_after := true) -> void:
@@ -691,14 +868,15 @@ func update_objective() -> void:
 		hud.objective.text = "用方牌钥匙打开维护门，沿后巷返回地面。"
 	else:
 		hud.objective.text = "穿过冷柜后的铁门，走后巷。"
-	hud.state_text.text = "旧铺档案可选调查：合照 %s  登记 %s  送药信 %s  访客簿 %s" % [
-		"✓" if GameState.opening_flags.ch3_photo_seen else "·",
-		"✓" if GameState.opening_flags.ch3_register_seen else "·",
-		"✓" if GameState.opening_flags.ch3_delivery_seen else "·",
-		"✓" if GameState.opening_flags.ch3_visitor_log_seen else "·"]
+	hud.state_text.text = "案卷核查（含真结局登记册）：合照 %s  血盆断指 %s  投诉信 %s  账单 %s  |  秤账 %s" % [
+		"✓" if GameState.opening_flags.ch3_photo_seen else "○",
+		"✓" if GameState.opening_flags.ch3_register_seen else "○",
+		"✓" if GameState.opening_flags.ch3_delivery_seen else "○",
+		"✓" if GameState.opening_flags.ch3_visitor_log_seen else "○",
+		"✓" if GameState.opening_flags.ch3_balance_rule_seen else "○"]
 
 func _evidence_status() -> String:
-	return "合照：%s\n常住登记：%s\n送药旧信：%s\n访客簿：%s\n方牌钥匙：%s\n时刻表撕页：%s" % [
+	return "三人合照：%s\n血盆与断指：%s\n邮差投诉信：%s\n肉铺账单：%s\n方牌钥匙：%s\n时刻表撕页：%s" % [
 		"已查" if GameState.opening_flags.ch3_photo_seen else "未查",
 		"已查" if GameState.opening_flags.ch3_register_seen else "未查",
 		"已查" if GameState.opening_flags.ch3_delivery_seen else "未查",

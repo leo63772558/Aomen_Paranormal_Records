@@ -20,6 +20,7 @@ window/size/viewport_height=360
 window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
 window/stretch/scale_mode="integer"
 
 [rendering]
@@ -31,6 +32,9 @@ environment/defaults/default_clear_color=Color(0.025, 0.035, 0.04, 1)
 
 [physics]
 common/physics_interpolation=true
+
+[gui]
+theme/custom_font="res://assets/fonts/noto_serif_sc_subset.ttf"
 
 [layer_names]
 2d_physics/layer_1="World_Wall"

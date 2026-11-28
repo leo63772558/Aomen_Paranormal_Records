@@ -14,7 +14,7 @@ const NAMES := {
 	"tide": "检查墙上的盐线",
 	"grate": "查看中央地栅的沉积",
 	"hatch": "检查梯子和高处检修盖",
-	"west": "查看左拱道的粉笔续痕",
+	"west": "查看左拱道的干燥鞋印",
 	"next": "沿左拱道前进",
 	"return": "退回井下维护平台"
 }
@@ -32,7 +32,6 @@ var selected_id := ""
 var after_panel := Callable()
 var widget: Control
 var hotspots: Dictionary = {}
-var chalk_arrow: Line2D
 var transition_active := false
 
 func _ready() -> void:
@@ -43,10 +42,9 @@ func _ready() -> void:
 	if not GameState.opening_flags.coastal_route_verified or not GameState.opening_flags.coastal_crawlway_seen:
 		push_error("The coastal chamber requires the evidence-verified crawlway route.")
 		return
-	AudioManager.set_scene_ambience("crypt")
+	AudioManager.set_scene_ambience("coastal")
 	_build_background()
 	_build_geometry()
-	_build_markings()
 	_build_hotspots()
 	player = preload("res://entities/player/player.tscn").instantiate()
 	player.visual_size_multiplier = 1.85
@@ -71,7 +69,7 @@ func _ready() -> void:
 	if not GameState.opening_flags.coastal_chamber_intro_seen:
 		GameState.opening_flags.coastal_chamber_intro_seen = true
 		checkpoint()
-		hud.notify("左边拱门还有粉笔记号。")
+		hud.notify("左边拱门干燥的石阶上有清晰的鞋印。")
 	else:
 		_update_objective()
 
@@ -116,20 +114,6 @@ func _build_geometry() -> void:
 		Vector2(-16, 736)
 	]), false)
 
-func _build_markings() -> void:
-	# A thin, scuffed chalk arrow is an inspectable clue, never a collision surface.
-	chalk_arrow = Line2D.new()
-	chalk_arrow.name = "ChalkRouteMark"
-	chalk_arrow.points = PackedVector2Array([
-		Vector2(252, 409), Vector2(213, 409), Vector2(184, 409),
-		Vector2(203, 397), Vector2(184, 409), Vector2(203, 422)
-	])
-	chalk_arrow.width = 2.4
-	chalk_arrow.default_color = Color("a29a82")
-	chalk_arrow.antialiased = true
-	chalk_arrow.z_index = -3
-	add_child(chalk_arrow)
-
 func _build_hotspots() -> void:
 	for id in TARGETS:
 		var area := Area2D.new()
@@ -167,9 +151,11 @@ func _process(_delta: float) -> void:
 			best = score
 	var prompt_name: String = NAMES.get(selected_id, "")
 	if selected_id == "west" and GameState.opening_flags.coastal_chamber_route_verified:
-		prompt_name = "复查左拱道的粉笔痕"
+		prompt_name = "复查左拱道的鞋印"
 	elif selected_id == "next" and not GameState.opening_flags.coastal_chamber_route_verified:
-		prompt_name = "沿粉笔记号进入左拱道"
+		prompt_name = "沿鞋印进入左拱道"
+	elif selected_id == "return" and not GameState.uses_legacy_coastal_rooms():
+		prompt_name = "沿右侧窄道返回圆井"
 	hud.prompt.text = "[ E ] " + prompt_name if not selected_id.is_empty() else ""
 	_update_objective()
 
@@ -211,9 +197,8 @@ func _inspect(id: String) -> void:
 		checkpoint()
 	if _all_route_evidence_seen() and not GameState.opening_flags.coastal_chamber_route_verified:
 		GameState.opening_flags.coastal_chamber_route_verified = true
-		chalk_arrow.default_color = Color("d9cba3")
 		checkpoint()
-		hud.show_resource_feedback("左拱道是干的。粉笔指向里面。")
+		hud.show_resource_feedback("左拱道是干的。鞋印通往里面。")
 		return
 	match id:
 		"tide":
@@ -223,7 +208,7 @@ func _inspect(id: String) -> void:
 		"hatch":
 			hud.show_resource_feedback("梯脚的锈还在。这里没人爬过。")
 		"west":
-			hud.show_resource_feedback("粉笔箭头通向左拱道。")
+			hud.show_resource_feedback("干燥鞋印和布丝通向左拱道。")
 
 func _all_route_evidence_seen() -> bool:
 	for flag_id in FLAGS.values():
@@ -232,7 +217,7 @@ func _all_route_evidence_seen() -> bool:
 	return true
 
 func _open_record() -> void:
-	_say("手札 · 沿海闸室", _journal_text())
+	_say("现场线索 · 沿海闸室", _journal_text())
 
 func _journal_text() -> String:
 	var lines: Array[String] = ["沿海闸室 · 现场记录", ""]
@@ -240,7 +225,7 @@ func _journal_text() -> String:
 		var flag_id: String = FLAGS[id]
 		lines.append(("✓ " if GameState.opening_flags[flag_id] else "□ ") + NAMES[id])
 	if GameState.opening_flags.coastal_chamber_route_verified:
-		lines.append("\n低池与旧梯路已排除，左拱道的干燥门槛和粉笔痕相互印证。前方位置仍未知。")
+		lines.append("\n干燥鞋印通向左拱道。前方还需沿途确认。")
 	else:
 		lines.append("\n把潮线、地栅沉积、梯脚锈层和左拱痕迹放在一起判断。")
 	return "\n".join(lines)
@@ -248,9 +233,9 @@ func _journal_text() -> String:
 func _update_objective() -> void:
 	if not is_instance_valid(hud):
 		return
-	hud.state_text.text = "沿海闸室     [ J ] 手札"
+	hud.state_text.text = "沿海闸室     [ B ] 线索"
 	if GameState.opening_flags.coastal_chamber_route_verified:
-		hud.objective.text = "路线已核验。沿左拱道进入岔口，或从右侧窄道返回平台。"
+		hud.objective.text = "沿左拱道进入淤泥岔口。" if GameState.uses_legacy_coastal_rooms() else "沿左拱道进入调压廊。"
 	else:
 		hud.objective.text = "沿干地去左边拱道。别靠近铁栏后的水。"
 
@@ -300,12 +285,6 @@ func _return_to_title() -> void:
 		return
 	get_tree().change_scene_to_file("res://ui/main_menu.tscn")
 
-func _use_three_room_coastal() -> bool:
-	for tag in ["057", "058", "059", "060", "225", "works", "silt", "press"]:
-		if tag in GameState.run_id:
-			return false
-	return true
-
 func _return_to_landing() -> void:
 	if transition_active:
 		return
@@ -324,8 +303,9 @@ func _return_to_landing() -> void:
 	tween.tween_property(fade, "color:a", 1.0, 0.55)
 	await tween.finished
 	if not is_inside_tree(): return
-	var dest_room := "ch5_coastal_works" if _use_three_room_coastal() else "ch5_coastal_landing"
-	var dest_entry := "from_landing" if _use_three_room_coastal() else "from_crawlway"
+	var legacy_route := GameState.uses_legacy_coastal_rooms()
+	var dest_room := "ch5_coastal_landing" if legacy_route else "ch5_coastal_works"
+	var dest_entry := "from_crawlway" if legacy_route else "from_landing"
 	if GameState.request_room_change(dest_room, dest_entry):
 		GameState.save_transition_checkpoint()
 	else:
@@ -339,7 +319,7 @@ func _enter_silt_tunnel() -> void:
 	if transition_active:
 		return
 	if not GameState.opening_flags.coastal_chamber_route_verified:
-		_say("路线还没核实", "先把盐线、地栅沉积、检修盖和左拱粉笔痕放在一起看。大文不会只凭一条箭头就贸然深入。")
+		_say("路线还没核实", "先把盐线、地栅沉积、检修盖和左拱鞋印放在一起看。大文不会贸然深入未知暗道。")
 		return
 	transition_active = true
 	player.controls_enabled = false
@@ -356,19 +336,21 @@ func _enter_silt_tunnel() -> void:
 	tween.tween_property(fade, "color:a", 1.0, 0.55)
 	await tween.finished
 	if not is_inside_tree(): return
-	if _use_three_room_coastal():
-		for f in ["coastal_chamber_tide_seen", "coastal_chamber_grate_seen", "coastal_chamber_hatch_seen", "coastal_chamber_west_seen", "coastal_chamber_route_verified", "coastal_silt_intro_seen", "coastal_silt_map_seen", "coastal_silt_sluice_seen", "coastal_silt_collapse_seen", "coastal_silt_grate_seen", "coastal_silt_arch_seen", "coastal_silt_route_verified"]:
-			GameState.opening_flags[f] = true
-	var dest_room := "ch5_coastal_pressure_gallery" if _use_three_room_coastal() else "ch5_coastal_silt_tunnel"
-	var dest_entry := "from_silt_tunnel" if _use_three_room_coastal() else "from_chamber"
+	var legacy_route := GameState.uses_legacy_coastal_rooms()
+	var dest_room := "ch5_coastal_silt_tunnel" if legacy_route else "ch5_coastal_pressure_gallery"
+	var dest_entry := "from_chamber" if legacy_route else "from_silt_tunnel"
+	var destination_seen: bool = GameState.opening_flags.coastal_silt_intro_seen if legacy_route else GameState.opening_flags.coastal_pressure_intro_seen
 	if GameState.request_room_change(dest_room, dest_entry):
-		GameState.save_transition_checkpoint()
+		if not legacy_route:
+			GameState.mark_coastal_silt_passed()
+		if destination_seen:
+			GameState.save_transition_checkpoint()
 	else:
 		layer.queue_free()
 		transition_active = false
 		if is_instance_valid(player):
 			player.controls_enabled = true
-		_say("岔口暂时无法进入", "场景入口没有通过登记核验。大文仍留在闸室，没有被送到未登记的地点。")
+		_say("左拱道暂时无法通行", "鞋印通向拱道里面。稍后再按 E 试一次。")
 
 func _fade_in() -> void:
 	var layer := CanvasLayer.new()
@@ -391,15 +373,11 @@ func checkpoint() -> void:
 		hud.show_resource_feedback("进度保存失败，当前仍可继续。请检查存储空间后重试。")
 
 func _play_drain_scare() -> void:
-	var sheet := preload("res://assets/characters/shadow_walk_011.png")
 	var figure := Sprite2D.new()
-	var crop := AtlasTexture.new()
-	crop.atlas = sheet
-	crop.region = Rect2(362, 0, 362, 724)
-	figure.texture = crop
+	figure.texture = preload("res://assets/characters/drowned_ghost_v3.png")
 	figure.position = Vector2(274, 625)
-	figure.scale = Vector2.ONE * 0.16
-	figure.modulate = Color(0.68, 0.78, 0.74, 0.0)
+	figure.scale = Vector2.ONE * 0.15
+	figure.modulate = Color(0.76, 0.88, 0.90, 0.0)
 	figure.z_index = 6
 	add_child(figure)
 	var ripple := Polygon2D.new()
@@ -410,20 +388,16 @@ func _play_drain_scare() -> void:
 	AudioManager.play_at(self, "gate_chain", figure.position)
 	AudioManager.play_world_effect("hall_wail")
 	if is_instance_valid(hud):
-		hud.show_resource_feedback("铁栏后面的黑水猛地翻涌——有东西攀在铁栏后死死盯着你！")
+		hud.show_resource_feedback("铁栏后面的黑水猛地翻涌——白瞳女鬼攀在铁栏后死死盯着你！")
 	var animation := create_tween()
 	animation.tween_property(ripple, "color:a", 0.32, 0.12)
-	animation.parallel().tween_property(figure, "modulate:a", 0.92, 0.12)
+	animation.parallel().tween_property(figure, "modulate:a", 0.94, 0.12)
 	animation.parallel().tween_property(figure, "position:y", 548.0, 0.18)
 	animation.tween_callback(func():
-		crop.region = Rect2(724, 0, 362, 724)
 		AudioManager.play_world_effect("gate_iron")
 	)
-	animation.tween_property(figure, "scale", Vector2.ONE * 0.21, 0.14)
+	animation.tween_property(figure, "scale", Vector2.ONE * 0.20, 0.14)
 	animation.parallel().tween_property(figure, "position", Vector2(312, 522), 0.14)
-	animation.tween_callback(func():
-		crop.region = Rect2(1086, 0, 362, 724)
-	)
 	animation.tween_property(figure, "position", Vector2(398, 585), 0.32)
 	animation.parallel().tween_property(figure, "modulate:a", 0.0, 0.32)
 	animation.parallel().tween_property(ripple, "color:a", 0.0, 0.32)

@@ -36,4 +36,7 @@ func _draw() -> void:
 		var center := Vector2(151 + i * 158, 142)
 		draw_string(font, center + Vector2(-10, 12), str(digits[i]), HORIZONTAL_ALIGNMENT_LEFT, -1, 38, Color("e6d2a5"))
 	draw_rect(Rect2(24, 312, 570, 22), Color(0, 0, 0, 0.82))
-	draw_string(font, Vector2(36,328), message, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("e6dbc0"))
+	var shown_msg := message
+	if GameState.touch_mode_active and shown_msg == "左键递增 · 右键递减 · 点把手尝试 · Esc 返回":
+		shown_msg = "轻点数字递增 · 点把手尝试 · 右上返回"
+	draw_string(font, Vector2(36,328), shown_msg, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("e6dbc0"))
